@@ -2,8 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { useTransaction } from '../../context/TransactionContext';
+
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   SafeAreaView,
@@ -37,28 +40,107 @@ export default function RecipientListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { transactionData, updateTransaction } = useTransaction();
 
   useEffect(() => {
     fetchRecipients();
   }, []);
+const fetchRecipients = async () => {
+  try {
+    setLoading(true);
+    const response = await RecipientService.getAllRecipients();
 
-  const fetchRecipients = async () => {
-    try {
-      setLoading(true);
-      const response = await RecipientService.getAllRecipients();
-      if (response.Success && response.Data) {
-        setRecipients(response.Data);
-      } else {
-        setError('No recipients found');
-      }
-    } catch (err) {
-      setError('Failed to load recipients');
-      console.error(err);
-    } finally {
-      setLoading(false);
+    if (!response?.Success) {
+      throw new Error('Failed to fetch recipients: Invalid response');
     }
-  };
 
+    if (!Array.isArray(response.Data)) {
+      throw new Error('Failed to fetch recipients: Invalid data format');
+    }
+
+    const selectedCountry = transactionData.receivingCountry;
+    
+    if (!selectedCountry) {
+      throw new Error('No receiving country selected');
+    }
+
+    // Normalize country names for case-insensitive comparison
+    const normalizeCountryName = (country: string) => country.trim().toLowerCase();
+
+    // Filter recipients by country (case-insensitive) and validate required fields
+    const filteredRecipients = response.Data
+      .filter(recipient => {
+        // Validate required fields exist
+        if (!recipient?.Id || !recipient?.FirstName || !recipient?.PhoneNumber) {
+          console.warn('Invalid recipient record skipped:', recipient);
+          return false;
+        }
+
+        // Clean phone number if it contains "undefined"
+        if (recipient.PhoneNumber.includes('undefined')) {
+          recipient.PhoneNumber = recipient.PhoneNumber.replace('undefined', '');
+        }
+
+        return normalizeCountryName(recipient.ReceivingCountry) === 
+               normalizeCountryName(selectedCountry);
+      })
+      .map(recipient => ({
+        ...recipient,
+        // Ensure consistent country name casing
+        ReceivingCountry: selectedCountry,
+        // Format phone number if needed
+        PhoneNumber: formatPhoneNumber(recipient.PhoneNumber),
+        // Create display name
+        displayName: `${recipient.FirstName} ${recipient.LastName}`.trim(),
+      }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+    setRecipients(filteredRecipients);
+
+  } catch (error) {
+    console.error('Error fetching recipients:', error);
+    Alert.alert(
+      'Error',
+      error.message || 'Could not load recipient list. Please try again later.',
+      [{ text: 'OK' }]
+    );
+    setRecipients([]);
+  } finally {
+    setLoading(false);
+  }
+};
+const formatPhoneNumber = (phone: string) => {
+  // Remove all non-digit characters
+  const cleaned = phone.replace(/\D/g, '');
+  
+  // Format based on country - this is a simple example
+  if (cleaned.startsWith('252')) { // Somalia
+    return `+${cleaned}`;
+  } else if (cleaned.startsWith('254')) { // Kenya
+    return `+${cleaned}`;
+  }
+  return cleaned.length > 0 ? `+${cleaned}` : 'Invalid number';
+};
+  // const fetchRecipients = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await RecipientService.getAllRecipients();
+
+  //     if (response.Success && response.Data) {
+  //       // before using recipeint data, we need to filter based on country
+  //       const selectCountry = transactionData.receivingCountry
+  //       const recipeintFilter = response.Data.filter(data=>data.receivingCountry==selectCountry)
+  //       setRecipients(response.Data);
+  //     } else {
+  //       setError('No recipients found');
+  //     }
+  //   } catch (err) {
+  //     setError('Failed to load recipients');
+  //     console.error(err);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const filteredRecipients = recipients.filter(recipient =>
     `${recipient.FirstName} ${recipient.LastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
     recipient.PhoneNumber.includes(searchQuery)
@@ -149,7 +231,7 @@ export default function RecipientListScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Select Recipient</Text>
           <TouchableOpacity 
-            onPress={() => navigation.navigate('AddRecipient')}
+            onPress={() => router.push('/recipient/AddRecipientScreen')}
             style={styles.addButton}
             accessibilityLabel="Add new recipient"
           >

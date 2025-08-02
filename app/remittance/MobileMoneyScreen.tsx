@@ -52,23 +52,30 @@ const MobileMoneyScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   const handleContinue = () => {
+
     if (selectedProvider) {
     
       // let id:number = Number(providers)
       const country = providers.find(p => p.id === selectedProvider)?.countries[0] ||'' ;
       const currency = providers.find(p=>p.id===selectedProvider)?.currency || '';
+      console.log("receiving currency")
   updateTransaction({
-         receivingCountry:country,
-         provider: selectedProvider,
-         currency:currency,
-         sendCurrency: currency
+  
+  receivingCountry:country,
+  provider: selectedProvider,
+  sendCountry: "Norway",
+  receiveCurrency:currency
+  }
+  
+);
 
-    });
+
+
       router.push("/transaction/SendMoneyScreen")    }
   };
   useEffect(() => {
-  console.log('Updated transactionData:', transactionData);
-}, [transactionData]);
+
+  }, [transactionData]);
 
   return (
     <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.container}>

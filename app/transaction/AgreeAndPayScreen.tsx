@@ -259,8 +259,11 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import flagMap from '../flagMap';
+
+
 import {
   FlatList,
   Image,
@@ -290,12 +293,36 @@ const getRandomColor = () => {
   const colors = ['#FF5733', '#33FF57', '#3357FF', '#F333FF', '#33FFF5'];
   return colors[Math.floor(Math.random() * colors.length)];
 };
+// Country to flag mapping utility
+const countryCodeMap: Record<string, string> = {
+  'norway': 'no',
+  'somalia': 'so',
+  'kenya': 'ke',
+  'uganda': 'ug',
+  'tanzania': 'tz',
+  'ethiopia': 'et',
+  'djibouti': 'dj',
+  'united states': 'us',
+  'united kingdom': 'gb',
+  'canada': 'ca',
+  // Add more countries as needed
+};
+
+const getFlagForCountry = (countryName: string) => {
+  if (!countryName) return flagMap.us;
+  
+  const lowerCaseCountry = countryName.toLowerCase();
+  const countryCode = countryCodeMap[lowerCaseCountry] || 'us';
+  return flagMap[countryCode] || flagMap.us;
+};
 
 const AgreeAndPayScreen = () => {
+  const router = useRouter()
   const navigation = useNavigation();
   const { recipient: recipientRaw, trans: transRaw } = useLocalSearchParams();
   const { transactionData, updateTransaction } = useTransaction();
-
+const fromFlag = getFlagForCountry(transactionData.sendCountry);
+  const toFlag = getFlagForCountry(transactionData.receivingCountry);
   const recipient = recipientRaw ? JSON.parse(recipientRaw) : {};
   const trans = transRaw ? JSON.parse(transRaw) : {};
   
@@ -307,7 +334,7 @@ const AgreeAndPayScreen = () => {
       ...transactionData,
       reason: selectedReason
     });
-    navigation.navigate('PaymentProcessing');
+    router.push('/transaction/PaymentMethodScreen');
   };
 
   const handleSelectReason = (reason) => {
@@ -344,10 +371,10 @@ const AgreeAndPayScreen = () => {
 
           <View style={styles.card}>
             <View style={styles.rowCard}>
-              <Image source={{ uri: 'https://flagcdn.com/w80/no.png' }} style={styles.flag} />
+              <Image source={fromFlag} style={styles.flag} />
               <View>
-                <Text style={styles.currency}>NOK</Text>
-                <Text style={styles.country}>Norway</Text>
+                <Text style={styles.currency}>{transactionData.sendCurrency}</Text>
+                <Text style={styles.country}>{transactionData.sendCountry}</Text>
               </View>
               <View style={styles.flexEnd}>
                 <Text style={styles.label}>You Send</Text>
@@ -356,10 +383,10 @@ const AgreeAndPayScreen = () => {
             </View>
 
             <View style={styles.rowCard}>
-              <Image source={{ uri: 'https://flagcdn.com/w80/so.png' }} style={styles.flag} />
+              <Image source={ toFlag} style={styles.flag} />
               <View>
-                <Text style={styles.currency}>USD</Text>
-                <Text style={styles.country}>Somalia</Text>
+                <Text style={styles.currency}>{transactionData.receiveCurrency}</Text>
+                <Text style={styles.country}>{transactionData.receivingCountry}</Text>
               </View>
               <View style={styles.flexEnd}>
                 <Text style={styles.label}>They Receive</Text>
@@ -369,7 +396,7 @@ const AgreeAndPayScreen = () => {
 
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Receiving Method</Text>
-              <Text style={styles.infoText}>{trans.receivingMethod || 'Hormuud EVC'}</Text>
+              <Text style={styles.infoText}>{transactionData.provider }</Text>
             </View>
 
             <View style={styles.infoBox}>

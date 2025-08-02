@@ -11,27 +11,53 @@ interface Recipient {
   avatarColor?: string;
 }
 
+// interface TransactionData {
+//   sendAmount: number;
+//   id?:string
+//   sendCurrency: string;
+//   sendCountry: string;
+//   receiveAmount: number;
+//   receiveCurrency: string;
+//   ReceiveAmount:number,
+//   sendingCurrency:string,
+  
+//   receivingMethod: string;
+//   recipient: Recipient;
+//   reason: string;
+//   fees: number;
+//   receivingCountry:string;
+//   service:string;
+//   totalAmount: number;
+//   provider:string;
+//   useBonus:boolean;
+//   providerName:string;
+//   currency: string,
+//   exchangeRate:number,
+// }
+
 interface TransactionData {
   sendAmount: number;
-  id?:string
+  useBonus: boolean;
+  provider: string;
   sendCurrency: string;
   sendCountry: string;
   receiveAmount: number;
   receiveCurrency: string;
-  ReceiveAmount:number,
-  
+  exchangeRate: number;
   receivingMethod: string;
-  recipient: Recipient;
+  receivingCountry: string;
+  providerName: string;
+  service: string;
+  recipient: {
+    firstName: string;
+    lastName: string;
+    relationshipToSender: string;
+    phoneNumber: string;
+    avatarColor: string;
+  };
   reason: string;
   fees: number;
-  receivingCountry:string;
-  service:string;
   totalAmount: number;
-  provider:string;
-  useBonus:boolean;
-  providerName:string;
-  currency: string,
-  exchangeRate:number,
 }
 
 interface TransactionContextType {
@@ -44,13 +70,11 @@ const defaultTransactionData: TransactionData = {
   sendAmount: 0,
   useBonus:false,
   provider:'',
-  sendCurrency: '',
-  sendCountry: '',
+  sendCurrency: 'NOK',
+  sendCountry: 'Norway',
   receiveAmount: 0,
   receiveCurrency: '',
-  currency:'',
   exchangeRate:0.0,
-  ReceiveAmount:0,
 
   receivingMethod: '',
   receivingCountry:'',
