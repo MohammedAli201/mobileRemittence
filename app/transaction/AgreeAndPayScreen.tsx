@@ -302,9 +302,7 @@ const countryCodeMap: Record<string, string> = {
   'tanzania': 'tz',
   'ethiopia': 'et',
   'djibouti': 'dj',
-  'united states': 'us',
-  'united kingdom': 'gb',
-  'canada': 'ca',
+ 
   // Add more countries as needed
 };
 

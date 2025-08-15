@@ -1,27 +1,3 @@
-// // utils/countryUtils.ts
-// import flagMap from '../flagMap';
-
-// // Map country names to ISO country codes
-// export const countryCodeMap: Record<string, string> = {
-//   'norway': 'no',
-//   'somalia': 'so',
-//   'kenya': 'ke',
-//   'uganda': 'ug',
-//   'tanzania': 'tz',
-//   'ethiopia': 'et',
-//   'djibouti': 'dj',
-//   'united states': 'us',
-//   // Add more mappings as needed
-// };
-
-// // Get flag image for a country name
-// export const getFlagForCountry = (countryName: string) => {
-//   if (!countryName) return flagMap.us; // Fallback to US flag
-  
-//   const lowerCaseCountry = countryName.toLowerCase();
-//   const countryCode = countryCodeMap[lowerCaseCountry] || 'us';
-//   return flagMap[countryCode] || flagMap.us;
-// };
 
 // utils/countryUtils.ts
 import flagMap from '../flagMap';

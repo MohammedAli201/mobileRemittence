@@ -1,17 +1,17 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { useTransaction } from '../../context/TransactionContext';
@@ -46,18 +46,31 @@ export default function PaymentMethodScreen() {
     updateTransaction({ paymentMethod: methodId });
   };
 
-  const handleContinue = () => {
-    if (!selectedMethod) {
-      Alert.alert('Please select a payment method');
-      return;
-    }
+const handleContinue = () => {
+  if (!selectedMethod) {
+    Alert.alert('Please select a payment method');
+    return;
+  }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      router.push('/payment/confirmation');
-    }, 1500);
-  };
+  setLoading(true);
+  router.push({
+    pathname: '/transaction/StripePayment',
+    params: { paymentMethod: selectedMethod }
+  });
+  setLoading(false);
+};
+  // const handleContinue = () => {
+  //   if (!selectedMethod) {
+  //     Alert.alert('Please select a payment method');
+  //     return;
+  //   }
+
+  //   setLoading(true);
+  //   setTimeout(() => {
+  //     setLoading(false);
+  //     router.push('/transaction/PaymentStripe');
+  //   }, 1500);
+  // };
 
   return (
     <SafeAreaView style={styles.container}>

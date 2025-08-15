@@ -48,6 +48,7 @@ interface TransactionData {
   receivingCountry: string;
   providerName: string;
   service: string;
+  paymentMethod:string;
   recipient: {
     firstName: string;
     lastName: string;
@@ -75,6 +76,7 @@ const defaultTransactionData: TransactionData = {
   receiveAmount: 0,
   receiveCurrency: '',
   exchangeRate:0.0,
+  paymentMethod:'',
 
   receivingMethod: '',
   receivingCountry:'',
