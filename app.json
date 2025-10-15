@@ -5,14 +5,14 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "moodtracker", // This must match Stripe's urlScheme
+    "scheme": "moodtracker",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mohaab18.moodtracker",
       "config": {
-        "usesNonExemptEncryption": false // Required for Apple Pay if implemented
+        "usesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,7 +27,7 @@
           "action": "VIEW",
           "data": [
             {
-              "scheme": "moodtracker" // For Stripe redirects
+              "scheme": "moodtracker"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
@@ -39,26 +39,26 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ],
-      "expo-secure-store",
-      [
-        "@stripe/stripe-react-native",
-        {
-          "merchantIdentifier": "", // Required for Apple Pay (if used)
-          "enableGooglePay": false // Set to true if using Google Pay
-        }
-      ]
-    ],
+   "plugins": [
+  "expo-router",
+  [
+    "expo-splash-screen",
+    {
+      "image": "./assets/images/splash-icon.png",
+      "imageWidth": 200,
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
+  ],
+  "expo-secure-store",
+  [
+    "@stripe/stripe-react-native",
+    {
+      "enableGooglePay": false
+    }
+  ]
+]
+,
     "extra": {
       "router": {},
       "eas": {

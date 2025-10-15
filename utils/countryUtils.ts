@@ -1,6 +1,6 @@
 
 // utils/countryUtils.ts
-import flagMap from '../flagMap';
+import flagMap from '../app/flagMap';
 
 // Map country names to country data
 export const countryData: Record<string, {
