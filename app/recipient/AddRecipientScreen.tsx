@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -8,14 +9,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import {
-  FintechHeroCard,
-  FintechInlineMessage,
   FintechPrimaryButton,
-  FintechProgress,
-  FintechSecondaryButton,
   FintechTextField,
   fintechColors,
 } from "../../components/ui/fintech";
@@ -125,23 +123,27 @@ export default function AddRecipientScreen() {
         style={styles.flex}
       >
         <View style={styles.container}>
-          <FintechProgress step={3} total={5} label="Step 3: Recipient" />
           <View style={styles.header}>
-            <Text style={styles.screenLabel}>Recipient</Text>
-            <Text style={styles.screenTitle}>Add recipient</Text>
-            <Text style={styles.screenSubtitle}>
-              Enter the payout profile exactly as it should be saved.
-            </Text>
+            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} activeOpacity={0.85}>
+              <Ionicons name="chevron-back" size={18} color="#A0A7B4" />
+            </TouchableOpacity>
+            <Text style={styles.screenTitle}>Add Recipient</Text>
+            <View style={styles.iconButtonPlaceholder} />
           </View>
 
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <FintechHeroCard
-              title="Recipient profile"
-              subtitle={`${getCountryNameFromCode(transactionData.receivingCountry || "SO")} - ${transactionData.provider || "Provider selected earlier"}`}
-            >
+            <View style={styles.contextCard}>
+              <Text style={styles.contextLabel}>Sending to</Text>
+              <Text style={styles.contextValue}>
+                {getCountryNameFromCode(transactionData.receivingCountry || "SO")}
+              </Text>
+              <Text style={styles.contextMeta}>{transactionData.provider || "Provider selected earlier"}</Text>
+            </View>
+
+            <View style={styles.formCard}>
               <View style={styles.form}>
                 <FintechTextField
                   label="First name"
@@ -205,15 +207,12 @@ export default function AddRecipientScreen() {
                   onChangeText={setRelationship}
                 />
               </View>
-            </FintechHeroCard>
-
-            <FintechInlineMessage text="This profile is saved once and then reused in the transfer request." />
+            </View>
 
             <View style={styles.actions}>
               <FintechPrimaryButton onPress={handleSaveRecipient} loading={loading} disabled={loading}>
                 Save and continue
               </FintechPrimaryButton>
-              <FintechSecondaryButton label="Back" onPress={() => router.back()} />
             </View>
           </ScrollView>
         </View>
@@ -225,42 +224,87 @@ export default function AddRecipientScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: fintechColors.background,
+    backgroundColor: '#2F2B23',
   },
   flex: {
     flex: 1,
   },
   container: {
     flex: 1,
-    padding: 16,
-    gap: 14,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    gap: 8,
+    backgroundColor: '#2F2B23',
   },
   header: {
-    gap: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 2,
   },
-  screenLabel: {
-    marginTop: 18,
-    fontSize: 15,
-    color: '#6B7280',
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#4B453A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3A362B',
+  },
+  iconButtonPlaceholder: {
+    width: 32,
+    height: 32,
   },
   screenTitle: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  screenSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#F8F6F0',
+    textAlign: 'center',
   },
   scrollContent: {
-    gap: 16,
-    paddingBottom: 24,
+    gap: 10,
+    paddingBottom: 12,
+  },
+  contextCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#4B453A',
+    backgroundColor: '#3A362B',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 3,
+  },
+  contextLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#D8CEB5',
+  },
+  contextValue: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  contextMeta: {
+    fontSize: 13,
+    color: '#F1E8CF',
+  },
+  formCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#4B453A',
+    backgroundColor: '#3A362B',
+    padding: 12,
   },
   form: {
-    gap: 14,
+    gap: 8,
   },
   actions: {
-    gap: 10,
+    gap: 8,
   },
 });

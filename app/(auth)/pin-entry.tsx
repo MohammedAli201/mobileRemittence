@@ -161,7 +161,8 @@ export default function PinEntryScreen() {
   if (isLoading && !pin.some(Boolean)) {
     return (
       <SafeAreaView style={styles.loadingScreen}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#F4DF78" />
+        <Text style={styles.loadingBrand}>JubaPay</Text>
       </SafeAreaView>
     );
   }
@@ -184,8 +185,8 @@ export default function PinEntryScreen() {
             disabled={!biometricAvailable}
             activeOpacity={0.85}
           >
-            <Ionicons name="radio-outline" size={12} color="#7B6CF0" />
-            <Text style={styles.tapChipText}>Tap</Text>
+            <Ionicons name="radio-outline" size={12} color="#F4DF78" />
+            <Text style={styles.tapChipText}>JubaPay</Text>
           </TouchableOpacity>
         </View>
 
@@ -236,12 +237,20 @@ export default function PinEntryScreen() {
           ))}
 
           <View style={styles.keypadRow}>
-            <View style={styles.keypadButton} />
+            {biometricAvailable ? (
+              <TouchableOpacity style={styles.keypadButton} onPress={handleBiometricAuth} activeOpacity={0.82}>
+                <Ionicons name="finger-print-outline" size={22} color="#F8F6F0" />
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.keypadButton, styles.keypadButtonMuted]}>
+                <Ionicons name="lock-closed-outline" size={20} color="#8F897B" />
+              </View>
+            )}
             <TouchableOpacity style={styles.keypadButton} onPress={() => handleKeyPress('0')} activeOpacity={0.82}>
               <Text style={styles.keypadText}>0</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.keypadButton} onPress={() => handleKeyPress('backspace')} activeOpacity={0.82}>
-              <Ionicons name="backspace-outline" size={22} color="#404040" />
+              <Ionicons name="backspace-outline" size={22} color="#F8F6F0" />
             </TouchableOpacity>
           </View>
         </View>
@@ -253,17 +262,24 @@ export default function PinEntryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   loadingScreen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
+  },
+  loadingBrand: {
+    marginTop: 14,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#F4DF78',
+    letterSpacing: 0.2,
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
     paddingHorizontal: 20,
   },
   topRow: {
@@ -276,30 +292,30 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#3A362B',
   },
   tapChip: {
     minHeight: 34,
     borderRadius: 17,
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: '#5C5443',
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#F8FBFF',
+    backgroundColor: '#3A362B',
   },
   tapChipText: {
     fontSize: 12,
-    color: '#2563EB',
+    color: '#F4DF78',
     fontWeight: '600',
   },
   profileBlock: {
     alignItems: 'center',
-    marginTop: 36,
+    marginTop: 16,
   },
   avatar: {
     width: 56,
@@ -312,69 +328,69 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#35517A',
+    color: '#2F2B23',
   },
   nameText: {
-    marginTop: 14,
-    fontSize: 20,
-    color: '#111827',
+    marginTop: 10,
+    fontSize: 18,
+    color: '#F8F6F0',
     fontWeight: '700',
   },
   phoneText: {
-    marginTop: 8,
+    marginTop: 6,
     fontSize: 13,
-    color: '#6B7280',
+    color: '#C9C1B2',
   },
   codeBlock: {
     alignItems: 'center',
-    marginTop: 42,
+    marginTop: 18,
   },
   codeTitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#C9C1B2',
     fontWeight: '600',
   },
   pinRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 16,
+    marginTop: 12,
   },
   pinBox: {
     width: 44,
     height: 54,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3A362B',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#5C5443',
     alignItems: 'center',
     justifyContent: 'center',
   },
   pinBoxFilled: {
-    borderColor: '#2563EB',
-    backgroundColor: '#F8FBFF',
+    borderColor: '#F4DF78',
+    backgroundColor: '#4A4334',
   },
   pinDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#F4DF78',
   },
   forgotText: {
-    marginTop: 16,
+    marginTop: 12,
     fontSize: 12,
-    color: '#6B7280',
+    color: '#F4DF78',
     textDecorationLine: 'underline',
   },
   bioButton: {
     alignSelf: 'center',
-    marginTop: 52,
+    marginTop: 16,
     minHeight: 44,
     borderRadius: 22,
     paddingHorizontal: 24,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#F4DF78',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563EB',
+    shadowColor: '#F4DF78',
     shadowOpacity: 0.22,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -383,26 +399,34 @@ const styles = StyleSheet.create({
   bioButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#2F2B23',
   },
   keypad: {
     marginTop: 'auto',
-    paddingBottom: 8,
+    paddingBottom: 2,
+    gap: 8,
   },
   keypadRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    gap: 12,
   },
   keypadButton: {
-    width: 72,
+    flex: 1,
     height: 48,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#3D392F',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#4F493C',
+  },
+  keypadButtonMuted: {
+    backgroundColor: '#363227',
   },
   keypadText: {
-    fontSize: 24,
-    fontWeight: '400',
-    color: '#111827',
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#F8F6F0',
   },
 });

@@ -138,7 +138,7 @@ export default function AgreeAndPayScreen() {
 
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 88 + Math.max(insets.bottom, 8) }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: reasonMenuOpen ? 16 : 8 }]}
           showsVerticalScrollIndicator={reasonMenuOpen}
           scrollEnabled={reasonMenuOpen}
         >
@@ -231,7 +231,7 @@ export default function AgreeAndPayScreen() {
           </View>
         </ScrollView>
 
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 8) + 6 }]}>
           <View style={styles.totalCard}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValue}>
@@ -301,11 +301,11 @@ function CountryBadge({ country }: { country: string }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
     paddingHorizontal: 16,
   },
   backButton: {
@@ -319,28 +319,28 @@ const styles = StyleSheet.create({
   },
   screenLabel: {
     fontSize: 15,
-    color: '#6B7280',
+    color: '#C9C1B2',
     marginBottom: 4,
   },
   screenTitle: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 22,
+    lineHeight: 28,
     fontWeight: '800',
-    color: '#111827',
+    color: '#F8F6F0',
     marginBottom: 12,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    gap: 12,
+    gap: 10,
   },
   amountStack: {
-    gap: 12,
+    gap: 10,
   },
   primaryReceiveCard: {
     borderRadius: 28,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3A362B',
     paddingHorizontal: 18,
     paddingVertical: 18,
     shadowColor: '#0F172A',
@@ -355,8 +355,8 @@ const styles = StyleSheet.create({
   primaryReceiveLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 6,
+    color: '#F3E7C2',
+    marginBottom: 4,
   },
   primaryReceiveAmountRow: {
     flexDirection: 'row',
@@ -366,10 +366,10 @@ const styles = StyleSheet.create({
   },
   primaryReceiveValue: {
     flex: 1,
-    fontSize: 31,
-    lineHeight: 35,
+    fontSize: 29,
+    lineHeight: 33,
     fontWeight: '800',
-    color: '#0A7A42',
+    color: '#F8F6F0',
   },
   primaryReceiveCurrencyBadge: {
     minWidth: 92,
@@ -385,13 +385,13 @@ const styles = StyleSheet.create({
   primaryReceiveCurrency: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#15803D',
+    color: '#2F2B23',
   },
   amountCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3A362B',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     paddingHorizontal: 16,
     paddingVertical: 14,
     shadowColor: '#0F172A',
@@ -401,10 +401,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   amountCardLabel: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#F3E7C2',
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   amountCardRow: {
     flexDirection: 'row',
@@ -413,9 +413,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   amountCardValue: {
-    fontSize: 30,
+    fontSize: 27,
     fontWeight: '800',
-    color: '#111827',
+    color: '#F8F6F0',
   },
   currencyWrap: {
     flexDirection: 'row',
@@ -470,10 +470,10 @@ const styles = StyleSheet.create({
     color: '#21507C',
   },
   reviewCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3A362B',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     padding: 16,
     gap: 12,
     shadowColor: '#0F172A',
@@ -483,11 +483,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   reviewBlock: {
-    gap: 8,
+    gap: 6,
   },
   reviewBlockLabel: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#D8CEB5',
     fontWeight: '600',
   },
   reviewValueWrap: {
@@ -498,44 +498,44 @@ const styles = StyleSheet.create({
   reviewValueStrong: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
+    color: '#F8F6F0',
     flexShrink: 1,
   },
   reviewValuePlain: {
-    fontSize: 15,
-    color: '#374151',
+    fontSize: 14,
+    color: '#F8F6F0',
   },
   personBadge: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E5ECF6',
+    backgroundColor: '#F4DF78',
     alignItems: 'center',
     justifyContent: 'center',
   },
   personBadgeText: {
     fontSize: 12,
-    color: '#35517A',
+    color: '#2F2B23',
     fontWeight: '600',
   },
   reviewDivider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#4B453A',
   },
   reviewGrid: {
-    gap: 10,
+    gap: 8,
   },
   reasonCard: {
     borderRadius: 16,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#343026',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 8,
   },
   reasonCardOpen: {
-    borderColor: '#BFDBFE',
+    borderColor: '#F4DF78',
   },
   reasonCardTop: {
     flexDirection: 'row',
@@ -544,9 +544,9 @@ const styles = StyleSheet.create({
   },
   dropdownCard: {
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#343026',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     overflow: 'hidden',
   },
   dropdownItem: {
@@ -556,53 +556,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F7',
+    borderBottomColor: '#4B453A',
   },
   dropdownItemActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#4A4436',
   },
   dropdownItemText: {
     fontSize: 14,
-    color: '#374151',
+    color: '#F8F6F0',
   },
   dropdownItemTextActive: {
-    color: '#2563EB',
+    color: '#F4DF78',
     fontWeight: '600',
   },
   footer: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 0,
     paddingTop: 8,
-    gap: 10,
-    backgroundColor: '#FFFFFF',
+    gap: 8,
+    backgroundColor: '#2F2B23',
   },
   totalCard: {
-    minHeight: 58,
+    minHeight: 52,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3A362B',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   totalLabel: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 15,
+    color: '#D8CEB5',
     fontWeight: '600',
   },
   totalValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
+    color: '#F8F6F0',
   },
   continueButton: {
-    height: 52,
+    height: 48,
     borderRadius: 28,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#F4DF78',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#2563EB',
@@ -614,6 +610,6 @@ const styles = StyleSheet.create({
   continueText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#2F2B23',
   },
 });

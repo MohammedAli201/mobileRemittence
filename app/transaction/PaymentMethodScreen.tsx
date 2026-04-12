@@ -1,8 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FintechProgress, fintechColors } from '../../components/ui/fintech';
+import { fintechColors } from '../../components/ui/fintech';
 import { getTransferDraft, mergeTransferDraft } from '../../services/transferDraft';
 
 const VISA_LOGO = require('../../assets/visa_card.png');
@@ -35,11 +36,12 @@ export default function PaymentMethodScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
-        <FintechProgress step={4} total={5} label="Step 4: Payment method" />
-
-        <Text style={styles.screenLabel}>Payment</Text>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Select payment method</Text>
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} activeOpacity={0.85}>
+            <Ionicons name="chevron-back" size={18} color="#A0A7B4" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Select Payment Method</Text>
+          <View style={styles.iconButtonPlaceholder} />
         </View>
 
         <View style={styles.list}>
@@ -88,27 +90,40 @@ export default function PaymentMethodScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   container: {
     flex: 1,
     paddingHorizontal: 16,
+    backgroundColor: '#2F2B23',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 16,
+  },
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-  screenLabel: {
-    marginTop: 18,
-    fontSize: 15,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  titleRow: {
-    marginBottom: 18,
-    alignItems: 'flex-start',
+  iconButtonPlaceholder: {
+    width: 32,
+    height: 32,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111827',
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F8F6F0',
+    textAlign: 'center',
   },
   list: {
     flex: 1,
@@ -117,13 +132,13 @@ const styles = StyleSheet.create({
   methodCard: {
     minHeight: 92,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3A362B',
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     shadowColor: '#0F172A',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -131,8 +146,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   methodCardSelected: {
-    borderColor: '#BFDBFE',
-    backgroundColor: '#F8FBFF',
+    borderColor: '#F4DF78',
+    backgroundColor: '#4A4334',
   },
   methodLeft: {
     flexDirection: 'row',
@@ -145,7 +160,7 @@ const styles = StyleSheet.create({
   },
   methodName: {
     fontSize: 20,
-    color: '#111827',
+    color: '#F8F6F0',
     fontWeight: '600',
   },
   radioOuter: {
@@ -168,15 +183,15 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingTop: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
     gap: 14,
   },
   totalCard: {
     height: 64,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3A362B',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -184,18 +199,18 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 15,
-    color: '#6B7280',
+    color: '#C9C1B2',
     fontWeight: '600',
   },
   totalValue: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#111827',
+    color: '#F8F6F0',
   },
   payButton: {
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#F4DF78',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#2563EB',
@@ -210,6 +225,6 @@ const styles = StyleSheet.create({
   payButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#2F2B23',
   },
 });

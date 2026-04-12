@@ -17,7 +17,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  FintechKeyValueRow,
   FintechPrimaryButton,
   FintechSecondaryButton,
   fintechColors,
@@ -571,24 +570,24 @@ export default function MoneyTransferScreen() {
 
             <Text style={styles.sectionTitle}>Transfer details</Text>
             <View style={styles.detailsList}>
-              <FintechKeyValueRow label="Destination" value={receiveCountryName} />
-              <FintechKeyValueRow label="Method" value={transactionData.service || "Wallet"} />
-              <FintechKeyValueRow label="Provider" value={transactionData.provider || "-"} />
+              <ReviewKeyValueRow label="Destination" value={receiveCountryName} />
+              <ReviewKeyValueRow label="Method" value={transactionData.service || "Wallet"} />
+              <ReviewKeyValueRow label="Provider" value={transactionData.provider || "-"} />
             </View>
 
             <View style={styles.reviewDivider} />
             <Text style={styles.sectionTitle}>Pricing</Text>
             <View style={styles.detailsList}>
-              <FintechKeyValueRow label="You send" value={sendAmountLabel.replace(".", ",")} />
-              <FintechKeyValueRow
+              <ReviewKeyValueRow label="You send" value={sendAmountLabel.replace(".", ",")} />
+              <ReviewKeyValueRow
                 label="Exchange rate"
                 value={`1 ${transactionData.sendCurrency} = ${transactionData.exchangeRate.toFixed(4).replace(".", ",")} ${transactionData.receiveCurrency}`}
               />
-              <FintechKeyValueRow
+              <ReviewKeyValueRow
                 label={`${transactionData.recipient.firstName || "Recipient"} gets`}
                 value={recipientGetsLabel.replace(".", ",")}
               />
-              <FintechKeyValueRow label="Fee" value={feeLabel.replace(".", ",")} />
+              <ReviewKeyValueRow label="Fee" value={feeLabel.replace(".", ",")} />
             </View>
 
             <View style={styles.reviewDivider} />
@@ -669,14 +668,23 @@ function CountryFlag({ country }: { country: string }) {
   );
 }
 
+function ReviewKeyValueRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.reviewKeyValueRow}>
+      <Text style={styles.reviewKeyValueLabel}>{label}</Text>
+      <Text style={styles.reviewKeyValueValue}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#2F2B23",
   },
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#2F2B23",
     paddingHorizontal: 16,
   },
   closeButton: {
@@ -690,14 +698,14 @@ const styles = StyleSheet.create({
   },
   screenLabel: {
     fontSize: 15,
-    color: "#6B7280",
+    color: "#C9C1B2",
     marginBottom: 2,
   },
   screenTitle: {
     fontSize: 18,
     lineHeight: 24,
     fontWeight: "800",
-    color: "#111827",
+    color: "#F8F6F0",
     marginBottom: 8,
   },
   scrollView: {
@@ -707,10 +715,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   amountSummaryCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#3A362B",
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#4B453A",
     padding: 14,
     gap: 10,
   },
@@ -727,16 +735,16 @@ const styles = StyleSheet.create({
   amountSummaryLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#6B7280",
+    color: "#F3F1EA",
   },
   amountSummaryValue: {
     fontSize: 22,
     lineHeight: 26,
     fontWeight: "800",
-    color: "#111827",
+    color: "#F8F6F0",
   },
   amountSummaryValueReceive: {
-    color: "#0A7A42",
+    color: "#F8F6F0",
   },
   currencyBadge: {
     minWidth: 88,
@@ -747,7 +755,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 14,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#4A4436",
   },
   currencyBadgeReceive: {
     backgroundColor: "#E8F7EE",
@@ -755,16 +763,16 @@ const styles = StyleSheet.create({
   currencyBadgeText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#111827",
+    color: "#F8F6F0",
   },
   currencyBadgeTextReceive: {
-    color: "#15803D",
+    color: "#F8F6F0",
   },
   amountCardValue: {
     flex: 1,
     fontSize: 24,
     fontWeight: "800",
-    color: "#111827",
+    color: "#F8F6F0",
   },
   flagBox: {
     width: 24,
@@ -809,43 +817,61 @@ const styles = StyleSheet.create({
     color: "#21507C",
   },
   reviewCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#3A362B",
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#4B453A",
     padding: 14,
     gap: 12,
   },
   reviewValueStrong: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#111827",
+    color: "#F8F6F0",
     flexShrink: 1,
   },
   personBadge: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#E5ECF6",
+    backgroundColor: "#F4DF78",
     alignItems: "center",
     justifyContent: "center",
   },
   personBadgeText: {
     fontSize: 12,
-    color: "#35517A",
+    color: "#2F2B23",
     fontWeight: "600",
   },
   reviewDivider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#4B453A",
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6B7280",
+    color: "#FFFFFF",
   },
   detailsList: {
     gap: 6,
+  },
+  reviewKeyValueRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  reviewKeyValueLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#F3F1EA",
+  },
+  reviewKeyValueValue: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    textAlign: "right",
   },
   reviewRow: {
     flexDirection: "row",
@@ -858,7 +884,7 @@ const styles = StyleSheet.create({
   },
   reviewSubtext: {
     fontSize: 13,
-    color: "#6B7280",
+    color: "#F1E8CF",
   },
   totalInlineRow: {
     flexDirection: "row",
@@ -867,13 +893,13 @@ const styles = StyleSheet.create({
   },
   totalInlineLabel: {
     fontSize: 15,
-    color: "#6B7280",
+    color: "#FFFFFF",
     fontWeight: "600",
   },
   totalInlineValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#111827",
+    color: "#F8F6F0",
   },
   alertCardError: {
     flexDirection: "row",
@@ -894,10 +920,10 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 0,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#3A362B",
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#4B453A",
     paddingHorizontal: 12,
     paddingTop: 10,
     shadowColor: "#0F172A",
@@ -912,12 +938,12 @@ const styles = StyleSheet.create({
   },
   footerCaption: {
     fontSize: 12,
-    color: "#6B7280",
+    color: "#F3F1EA",
   },
   footerValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#111827",
+    color: "#F8F6F0",
   },
   buttonContainer: {
     gap: 6,
@@ -929,7 +955,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: "#6B7280",
+    color: "#F3F1EA",
     textAlign: "center",
   },
   warningButton: {

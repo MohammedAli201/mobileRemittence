@@ -240,10 +240,10 @@ export default function StripePaymentScreen() {
         </View>
 
         <View style={styles.providerBar}>
-          <Text style={styles.providerLeft}>paysii.com</Text>
+          <Text style={styles.providerLeft}>JubaPay</Text>
           <View style={styles.providerRight}>
             <Ionicons name="lock-closed" size={12} color="#7C7C7C" />
-            <Text style={styles.providerRightText}>Secure payment is provided by Stripe</Text>
+            <Text style={styles.providerRightText}>Secure payment for JubaPay</Text>
           </View>
         </View>
 
@@ -306,7 +306,7 @@ export default function StripePaymentScreen() {
           {loading ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator size="large" color={fintechColors.primary} />
-              <Text style={styles.loadingText}>Processing payment...</Text>
+              <Text style={styles.loadingText}>JubaPay is processing payment...</Text>
             </View>
           ) : (
             <>
@@ -317,7 +317,7 @@ export default function StripePaymentScreen() {
               >
                 <Text style={styles.payButtonText}>{`Pay ${params.amount || ""}`.trim()}</Text>
               </FintechPrimaryButton>
-              <Text style={styles.brandText}>Powered by Stripe</Text>
+              <Text style={styles.brandText}>JubaPay</Text>
             </>
           )}
         </View>

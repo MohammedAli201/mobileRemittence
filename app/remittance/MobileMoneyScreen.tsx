@@ -10,7 +10,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { FintechProgress } from "../../components/ui/fintech";
 import {
   getTransferDraft,
   mergeTransferDraft,
@@ -200,18 +199,17 @@ export default function MobileMoneyScreen() {
       <View
         style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}
       >
-        <FintechProgress step={2} total={5} label="Step 2: Delivery methods" />
-
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="close" size={20} color="#2B2B2B" />
-        </TouchableOpacity>
-
-        <Text style={styles.screenLabel}>Sending to {receivingCountry}</Text>
-        <Text style={styles.title}>Choose delivery method</Text>
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={20} color="#F8F6F0" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Delivery Methods</Text>
+          <View style={styles.topBarSpacer} />
+        </View>
 
         <ScrollView
           style={styles.scrollView}
@@ -322,12 +320,12 @@ function ProviderRow({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#2F2B23",
   },
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#2F2B23",
   },
   closeButton: {
     width: 36,
@@ -335,21 +333,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 18,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: "#3A362B",
     marginTop: 2,
+    marginBottom: 0,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
     marginBottom: 12,
   },
-  screenLabel: {
-    fontSize: 15,
-    color: "#6B7280",
-    marginBottom: 4,
-  },
   title: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 18,
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "700",
+    color: "#F8F6F0",
+    textAlign: "center",
+    marginBottom: 0,
+  },
+  topBarSpacer: {
+    width: 36,
+    height: 36,
   },
   scrollView: {
     flex: 1,
@@ -361,23 +367,23 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#111827",
+    color: "#FFFFFF",
     marginBottom: 6,
   },
   sectionSubtitle: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#6B7280",
+    color: "#D8CEB5",
     marginBottom: 10,
   },
   providerRow: {
     minHeight: 62,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
+    borderColor: "#4B453A",
+    backgroundColor: "#3A362B",
     paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -386,8 +392,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   providerRowActive: {
-    borderColor: "#BFDBFE",
-    backgroundColor: "#F8FBFF",
+    borderColor: "#F4DF78",
+    backgroundColor: "#4A4436",
   },
   providerRowDisabled: {
     opacity: 0.58,
@@ -398,15 +404,15 @@ const styles = StyleSheet.create({
   },
   providerName: {
     fontSize: 16,
-    color: "#111827",
+    color: "#FFFFFF",
     fontWeight: "600",
   },
   providerNameActive: {
-    color: "#2563EB",
+    color: "#F4DF78",
   },
   providerDescription: {
     fontSize: 13,
-    color: "#6B7280",
+    color: "#D8CEB5",
     marginTop: 4,
     lineHeight: 18,
   },
@@ -415,29 +421,27 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 0,
-    borderTopWidth: 1,
-    borderTopColor: "#EEF2F7",
     paddingTop: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#2F2B23",
   },
   nextButton: {
     height: 52,
     borderRadius: 26,
-    backgroundColor: "#2563EB",
+    backgroundColor: "#F4DF78",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#2563EB",
+    shadowColor: "#F4DF78",
     shadowOpacity: 0.22,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
   nextButtonDisabled: {
-    backgroundColor: "#F1D9D2",
+    backgroundColor: "#8C7A3A",
   },
   nextButtonText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#2F2B23",
   },
 });

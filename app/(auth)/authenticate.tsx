@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, SafeAreaView, StyleSheet } from 'react-native';
+import { ActivityIndicator, SafeAreaView, StyleSheet, Text } from 'react-native';
 import { fintechColors } from '../../components/ui/fintech';
 
 export default function AuthenticateScreen() {
@@ -13,6 +13,7 @@ export default function AuthenticateScreen() {
   return (
     <SafeAreaView style={styles.loadingScreen}>
       <ActivityIndicator size="large" color={fintechColors.primary} />
+      <Text style={styles.loadingBrand}>JubaPay</Text>
     </SafeAreaView>
   );
 }
@@ -23,5 +24,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: fintechColors.background,
+  },
+  loadingBrand: {
+    marginTop: 14,
+    fontSize: 18,
+    fontWeight: '800',
+    color: fintechColors.primary,
+    letterSpacing: 0.2,
   },
 });

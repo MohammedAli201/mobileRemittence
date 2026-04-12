@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -6,22 +7,19 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   FintechEmptyState,
   FintechPrimaryButton,
-  FintechProgress,
-  FintechSecondaryButton,
-  FintechStatusPill,
-  FintechTextField,
   fintechColors,
 } from "../../components/ui/fintech";
 import { RecipientService } from "../../services/apiClient";
 import {
   createRecipientProfile,
-  getCountryNameFromCode,
   normalizeCountryCode,
   RecipientProfile,
 } from "../../services/remittance";
@@ -70,6 +68,7 @@ const mapApiRecipientToProfile = (item: RecipientResponse): RecipientProfile =>
 
 export default function RecipientListScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const transactionData = getTransferDraft();
   const [recipients, setRecipients] = useState<RecipientProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -190,23 +189,35 @@ export default function RecipientListScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
         <View style={styles.header}>
-          <FintechProgress step={3} total={5} label="Step 3: Recipient" />
-          <Text style={styles.screenLabel}>Recipients</Text>
-          <View style={styles.headerRow}>
-            <Text style={styles.screenTitle}>Choose recipient</Text>
-            <FintechStatusPill label={`${filteredRecipients.length} saved`} tone="info" />
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} activeOpacity={0.85}>
+              <Ionicons name="chevron-back" size={18} color="#A0A7B4" />
+            </TouchableOpacity>
+            <Text style={styles.screenTitle}>Select Recipient</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => router.push("/recipient/AddRecipientScreen")}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add" size={16} color="#2F2B23" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.screenSubtitle}>
-            Saved recipients for {getCountryNameFromCode(selectedCountry)}.
-          </Text>
-          <FintechTextField
-            icon="search-outline"
-            placeholder="Search name or phone"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+          <View style={styles.contextCard}>
+            <Text style={styles.contextLabel}>Sending to</Text>
+            <Text style={styles.contextValue}>{selectedCountry}</Text>
+          </View>
+          <View style={styles.searchWrap}>
+            <Ionicons name="search-outline" size={18} color="#A0A7B4" />
+            <TextInput
+              placeholder="Search"
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+            />
+          </View>
         </View>
 
         <ScrollView
@@ -243,11 +254,6 @@ export default function RecipientListScreen() {
                     {recipient.firstName} {recipient.lastName}
                   </Text>
                   <Text style={styles.recipientMeta}>{recipient.phoneNumber}</Text>
-                  <Text style={styles.recipientMeta}>{recipient.relationshipToSender}</Text>
-                </View>
-
-                <View style={styles.recipientActions}>
-                  <FintechStatusPill label={recipient.provider || "Provider"} tone="neutral" />
                 </View>
               </TouchableOpacity>
             ))
@@ -260,12 +266,6 @@ export default function RecipientListScreen() {
           )}
         </ScrollView>
 
-        <View style={styles.footer}>
-          <FintechPrimaryButton
-            label="Add new recipient"
-            onPress={() => router.push("/recipient/AddRecipientScreen")}
-          />
-        </View>
       </View>
     </SafeAreaView>
   );
@@ -274,101 +274,142 @@ export default function RecipientListScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   loadingScreen: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   content: {
     flex: 1,
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 0,
+    gap: 8,
+    backgroundColor: '#2F2B23',
   },
   header: {
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 2,
   },
-  screenLabel: {
-    marginTop: 18,
-    fontSize: 15,
-    color: '#6B7280',
-  },
-  headerRow: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
+  },
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#4B453A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3A362B',
+  },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F4DF78',
   },
   screenTitle: {
     flex: 1,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
-    color: '#111827',
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#F8F6F0',
+    textAlign: 'center',
+    marginHorizontal: 8,
   },
-  screenSubtitle: {
+  contextCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#4B453A',
+    backgroundColor: '#3A362B',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 2,
+  },
+  contextLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#D8CEB5',
+  },
+  contextValue: {
     fontSize: 14,
-    color: '#6B7280',
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  searchWrap: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    borderRadius: 23,
+    borderWidth: 1,
+    borderColor: '#4B453A',
+    backgroundColor: '#3A362B',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#FFFFFF',
+    paddingVertical: 0,
   },
   listArea: {
     flex: 1,
   },
   listContent: {
-    gap: 12,
-    paddingBottom: 16,
+    gap: 10,
+    paddingBottom: 12,
   },
   recipientCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 20,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#4B453A',
+    backgroundColor: '#3A362B',
     shadowColor: '#0F172A',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "700",
   },
   recipientInfo: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
   recipientName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
-    color: '#111827',
+    color: '#FFFFFF',
   },
   recipientMeta: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  recipientActions: {
-    alignItems: "flex-end",
-    gap: 10,
-  },
-  footer: {
-    paddingTop: 4,
-    paddingBottom: 4,
-    backgroundColor: '#FFFFFF',
+    fontSize: 12,
+    color: '#D8CEB5',
   },
   errorWrap: {
     flex: 1,

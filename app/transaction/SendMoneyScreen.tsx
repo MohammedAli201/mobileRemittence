@@ -362,11 +362,11 @@ function CountryFlag({ country }: { country: string }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   scrollView: {
     flex: 1,
@@ -386,31 +386,31 @@ const styles = StyleSheet.create({
   },
   screenLabel: {
     fontSize: 15,
-    color: '#6B7280',
+    color: '#C9C1B2',
     marginBottom: 8,
   },
   title: {
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: '800',
-    color: '#111827',
-    marginBottom: 24,
+    color: '#F8F6F0',
+    marginBottom: 16,
   },
   amountStack: {
-    gap: 16,
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 16,
   },
   primaryReceiveCard: {
     borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    backgroundColor: '#3A362B',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     shadowColor: '#0F172A',
     shadowOpacity: 0.08,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   primaryReceiveContent: {
     width: '100%',
@@ -418,8 +418,8 @@ const styles = StyleSheet.create({
   primaryReceiveLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 6,
+    color: '#F3E7C2',
+    marginBottom: 4,
   },
   primaryReceiveAmountRow: {
     flexDirection: 'row',
@@ -430,10 +430,10 @@ const styles = StyleSheet.create({
   primaryReceiveInput: {
     flex: 1,
     padding: 0,
-    fontSize: 31,
-    lineHeight: 35,
+    fontSize: 28,
+    lineHeight: 32,
     fontWeight: '800',
-    color: '#0A7A42',
+    color: '#F8F6F0',
   },
   primaryReceiveCurrencyBadge: {
     minWidth: 92,
@@ -449,15 +449,15 @@ const styles = StyleSheet.create({
   primaryReceiveCurrency: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#15803D',
+    color: '#2F2B23',
   },
   amountCard: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    backgroundColor: '#3A362B',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     shadowColor: '#0F172A',
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -471,16 +471,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   amountLabel: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#D8CEB5',
     fontWeight: '600',
   },
   amountHint: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#D8CEB5',
     fontWeight: '600',
   },
   amountInner: {
@@ -492,9 +492,9 @@ const styles = StyleSheet.create({
   amountInput: {
     flex: 1,
     padding: 0,
-    fontSize: 30,
+    fontSize: 27,
     fontWeight: '800',
-    color: '#111827',
+    color: '#F8F6F0',
   },
   amountInputCompact: {
     fontSize: 34,
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
   },
   currencyCode: {
     fontSize: 18,
-    color: '#111827',
+    color: '#F8F6F0',
     fontWeight: '700',
   },
   flagBox: {
@@ -556,17 +556,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
     paddingTop: 8,
   },
   summaryPanel: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#4B453A',
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    gap: 14,
+    backgroundColor: '#3A362B',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
     shadowColor: '#0F172A',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#4B453A',
   },
   costRow: {
     flexDirection: 'row',
@@ -584,28 +584,28 @@ const styles = StyleSheet.create({
   },
   costLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#D8CEB5',
   },
   costValue: {
     fontSize: 14,
-    color: '#111827',
+    color: '#F8F6F0',
     fontWeight: '600',
   },
   totalLabel: {
-    fontSize: 18,
-    color: '#111827',
+    fontSize: 16,
+    color: '#F8F6F0',
     fontWeight: '700',
   },
   totalValue: {
-    fontSize: 22,
-    color: '#111827',
+    fontSize: 20,
+    color: '#F8F6F0',
     fontWeight: '800',
   },
   nextButton: {
     width: '100%',
-    height: 56,
+    height: 52,
     borderRadius: 28,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#F4DF78',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#2563EB',
@@ -615,11 +615,11 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   nextButtonDisabled: {
-    backgroundColor: '#93C5FD',
+    backgroundColor: '#BFA85A',
   },
   nextButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#2F2B23',
   },
 });

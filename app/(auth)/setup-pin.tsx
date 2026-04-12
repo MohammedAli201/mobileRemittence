@@ -95,6 +95,7 @@ export default function SetupPinScreen() {
     return (
       <SafeAreaView style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={fintechColors.primary} />
+        <Text style={styles.loadingBrand}>JubaPay</Text>
       </SafeAreaView>
     );
   }
@@ -177,6 +178,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: fintechColors.background,
+  },
+  loadingBrand: {
+    marginTop: 14,
+    fontSize: 18,
+    fontWeight: '800',
+    color: fintechColors.primary,
+    letterSpacing: 0.2,
   },
   flex: {
     flex: 1,

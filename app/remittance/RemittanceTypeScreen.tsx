@@ -1,8 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FintechProgress, fintechColors } from '../../components/ui/fintech';
+import { fintechColors } from '../../components/ui/fintech';
 import { getTransferDraft, mergeTransferDraft } from '../../services/transferDraft';
 
 type CountryOption = {
@@ -51,10 +52,15 @@ export default function RemittanceTypeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
-        <FintechProgress step={1} total={5} label="Step 1: Destination country" />
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} activeOpacity={0.85}>
+            <Ionicons name="chevron-back" size={18} color="#A0A7B4" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Select Country</Text>
+          <View style={styles.iconButtonPlaceholder} />
+        </View>
 
-        <Text style={styles.screenLabel}>Send money</Text>
-        <Text style={styles.title}>Choose destination</Text>
+        <Text style={styles.subtitle}>Choose where the transfer is going.</Text>
 
         <View style={styles.countryList}>
           {countryOptions.map((country) => {
@@ -85,7 +91,7 @@ export default function RemittanceTypeScreen() {
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
           <Text style={styles.footerAmount}>{sendingLabel}</Text>
           <TouchableOpacity
-            style={styles.nextButton}
+            style={[styles.nextButton, !selectedCountry && styles.nextButtonDisabled]}
             onPress={handleContinue}
             activeOpacity={0.9}
           >
@@ -101,7 +107,7 @@ function CountryFlag({ kind }: { kind: CountryOption['flag'] }) {
   if (kind === 'somalia') {
     return (
       <View style={[styles.flagCircle, styles.flagSomalia]}>
-        <Text style={styles.flagStar}>★</Text>
+        <Ionicons name="star" size={12} color="#FFFFFF" />
       </View>
     );
   }
@@ -138,29 +144,47 @@ function CountryFlag({ kind }: { kind: CountryOption['flag'] }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
-  headerRow: {
-    marginTop: 24,
-    marginBottom: 18,
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 14,
   },
-  screenLabel: {
-    marginTop: 18,
-    fontSize: 15,
-    color: '#6B7280',
-    marginBottom: 6,
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#4B453A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3A362B',
+  },
+  iconButtonPlaceholder: {
+    width: 32,
+    height: 32,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 18,
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#F8F6F0',
+    textAlign: 'center',
+    marginBottom: 0,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#C9C1B2',
+    marginBottom: 14,
   },
   countryList: {
     flex: 1,
@@ -170,21 +194,16 @@ const styles = StyleSheet.create({
     minHeight: 82,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#4B453A',
+    backgroundColor: '#3A362B',
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
   countryRowActive: {
-    borderColor: '#BFDBFE',
-    backgroundColor: '#F8FBFF',
+    borderColor: '#F4DF78',
+    backgroundColor: '#4A4334',
   },
   countryLeft: {
     flexDirection: 'row',
@@ -194,14 +213,14 @@ const styles = StyleSheet.create({
   countryName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8F6F0',
   },
   countryNameActive: {
-    color: '#2563EB',
+    color: '#F4DF78',
   },
   countryMeta: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#C9C1B2',
     marginTop: 3,
   },
   radioOuter: {
@@ -209,47 +228,45 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: '#D3D8DF',
+    borderColor: '#7A7263',
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioOuterActive: {
-    borderColor: '#2563EB',
+    borderColor: '#F4DF78',
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#F4DF78',
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: '#EEF2F7',
+    borderTopColor: '#4B453A',
     paddingTop: 12,
     gap: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2F2B23',
   },
   footerAmount: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
+    color: '#F8F6F0',
   },
   nextButton: {
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#F4DF78',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563EB',
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+  },
+  nextButtonDisabled: {
+    opacity: 0.55,
   },
   nextButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#2F2B23',
   },
   flagCircle: {
     width: 30,
@@ -257,16 +274,12 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E4E4E4',
+    borderColor: '#5D5647',
   },
   flagSomalia: {
     backgroundColor: '#3B86DA',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  flagStar: {
-    color: '#FFFFFF',
-    fontSize: 12,
   },
   flagKenya: {
     backgroundColor: '#FFFFFF',
