@@ -1,284 +1,215 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
-
-import { useTransaction } from '../../context/TransactionContext';
+import React, { useMemo, useState } from 'react';
+import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FintechProgress, fintechColors } from '../../components/ui/fintech';
+import { getTransferDraft, mergeTransferDraft } from '../../services/transferDraft';
 
 const VISA_LOGO = require('../../assets/visa_card.png');
 const MASTERCARD_LOGO = require('../../assets/master_card.png');
-const CREDIT_CARD_ICON = require('../../assets/master_card.png');
+
+const formatMoney = (amount: number, currency: string) =>
+  `${currency} ${Number(amount || 0).toFixed(2)}`;
 
 export default function PaymentMethodScreen() {
   const router = useRouter();
-  const { transactionData, updateTransaction } = useTransaction();
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const insets = useSafeAreaInsets();
+  const transactionData = getTransferDraft();
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(transactionData.paymentMethod || null);
 
-  const paymentMethods = [
-    {
-      id: 'visa',
-      name: 'Visa',
-      logo: VISA_LOGO,
-      description: 'Pay with your Visa card',
-    },
-    {
-      id: 'mastercard',
-      name: 'Mastercard',
-      logo: MASTERCARD_LOGO,
-      description: 'Pay with your Mastercard',
-    },
-  ];
+  const paymentMethods = useMemo(
+    () => [
+      { id: 'mastercard', name: 'MasterCard', logo: MASTERCARD_LOGO },
+      { id: 'visa', name: 'Visa', logo: VISA_LOGO },
+    ],
+    []
+  );
 
-  const handlePaymentMethodSelect = (methodId: string) => {
-    setSelectedMethod(methodId);
-    updateTransaction({ paymentMethod: methodId });
+  const handleContinue = () => {
+    if (!selectedMethod) return;
+
+    mergeTransferDraft({ paymentMethod: selectedMethod });
+    router.push('/transaction/MoneyTransferScreen');
   };
 
-const handleContinue = () => {
-  if (!selectedMethod) {
-    Alert.alert('Please select a payment method');
-    return;
-  }
-
-  setLoading(true);
-  router.push({
-    pathname: '/transaction/StripePayment',
-    params: { paymentMethod: selectedMethod }
-  });
-  setLoading(false);
-};
-  // const handleContinue = () => {
-  //   if (!selectedMethod) {
-  //     Alert.alert('Please select a payment method');
-  //     return;
-  //   }
-
-  //   setLoading(true);
-  //   setTimeout(() => {
-  //     setLoading(false);
-  //     router.push('/transaction/PaymentStripe');
-  //   }, 1500);
-  // };
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>Select Payment Method</Text>
-          <Text style={styles.subtitle}>
-            {/* Total: {transactionData.totalAmount?.toFixed(2)} {transactionData.sendCurrency} */}
-          </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
+        <FintechProgress step={4} total={5} label="Step 4: Payment method" />
+
+        <Text style={styles.screenLabel}>Payment</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Select payment method</Text>
         </View>
 
-        <View style={styles.cardContainer}>
-          <Image source={CREDIT_CARD_ICON} style={styles.cardIcon} />
-          <Text style={styles.sectionTitle}>Credit/Debit Card</Text>
+        <View style={styles.list}>
+          {paymentMethods.map((method) => {
+            const selected = selectedMethod === method.id;
 
-          {paymentMethods.map((method) => (
-            <TouchableOpacity
-              key={method.id}
-              style={[
-                styles.methodCard,
-                selectedMethod === method.id && styles.selectedMethodCard,
-              ]}
-              onPress={() => handlePaymentMethodSelect(method.id)}
-            >
-              <Image source={method.logo} style={styles.methodLogo} />
-              <View style={styles.methodInfo}>
-                <Text style={styles.methodName}>{method.name}</Text>
-                <Text style={styles.methodDescription}>{method.description}</Text>
-              </View>
-              <View
-                style={[
-                  styles.radioButton,
-                  selectedMethod === method.id && styles.radioButtonSelected,
-                ]}
-              />
-            </TouchableOpacity>
-          ))}
+            return (
+              <TouchableOpacity
+                key={method.id}
+                style={[styles.methodCard, selected && styles.methodCardSelected]}
+                onPress={() => setSelectedMethod(method.id)}
+                activeOpacity={0.9}
+              >
+                <View style={styles.methodLeft}>
+                  <Image source={method.logo} style={styles.logo} resizeMode="contain" />
+                  <Text style={styles.methodName}>{method.name}</Text>
+                </View>
+                <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
+                  {selected ? <View style={styles.radioInner} /> : null}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <View style={styles.securityInfo}>
-          <Text style={styles.securityText}>
-            🔒 Your payment information is encrypted and processed securely.
-          </Text>
-        </View>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
+          <View style={styles.totalCard}>
+            <Text style={styles.totalLabel}>Total To Pay</Text>
+              <Text style={styles.totalValue}>{formatMoney(transactionData.totalAmount, transactionData.sendCurrency)}</Text>
+          </View>
 
-        <View style={styles.buttonWrapper}>
           <TouchableOpacity
-            style={[
-              styles.continueButton,
-              (!selectedMethod || loading) && styles.disabledButton,
-            ]}
+            style={[styles.payButton, !selectedMethod && styles.payButtonDisabled]}
             onPress={handleContinue}
-            disabled={!selectedMethod || loading}
+            disabled={!selectedMethod}
+            activeOpacity={0.9}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.continueButtonText}>
-                Continue to Payment Details
-              </Text>
-            )}
+            <Text style={styles.payButtonText}>Pay</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
   },
-  scrollContainer: {
-    padding: 20,
-    paddingBottom: 40,
+  screenLabel: {
+    marginTop: 18,
+    fontSize: 15,
+    color: '#6B7280',
+    marginBottom: 4,
   },
-//   header: {
-//     marginBottom: 30,
-//     alignItems: 'center',
-//   },
-//   title: {
-//     fontSize: 24,
-//     fontWeight: 'bold',
-//     color: '#2d3748',
-//     textAlign: 'center',
-//   },
-  subtitle: {
-    fontSize: 16,
-    color: '#4a5568',
-    textAlign: 'center',
-    marginTop: 4,
+  titleRow: {
+    marginBottom: 18,
+    alignItems: 'flex-start',
   },
-  cardContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111827',
   },
-  cardIcon: {
-    width: 40,
-    height: 40,
-    alignSelf: 'center',
-    marginBottom: 15,
-    tintColor: '#4a5568',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2d3748',
-    marginBottom: 20,
-    textAlign: 'center',
+  list: {
+    flex: 1,
+    gap: 14,
   },
   methodCard: {
+    minHeight: 92,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    marginBottom: 12,
-    backgroundColor: '#f8fafc',
+    borderColor: '#E5E7EB',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  selectedMethodCard: {
-    borderColor: '#4299e1',
-    backgroundColor: '#ebf8ff',
+  methodCardSelected: {
+    borderColor: '#BFDBFE',
+    backgroundColor: '#F8FBFF',
   },
-  methodLogo: {
-    width: 50,
-    height: 30,
-    resizeMode: 'contain',
-    marginRight: 15,
+  methodLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
   },
-  methodInfo: {
-    flex: 1,
+  logo: {
+    width: 42,
+    height: 28,
   },
   methodName: {
+    fontSize: 20,
+    color: '#111827',
+    fontWeight: '600',
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#D4D9E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: {
+    borderColor: fintechColors.primary,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: fintechColors.primary,
+  },
+  footer: {
+    paddingTop: 8,
+    backgroundColor: '#FFFFFF',
+    gap: 14,
+  },
+  totalCard: {
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  totalLabel: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  payButton: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563EB',
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  payButtonDisabled: {
+    opacity: 0.55,
+  },
+  payButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2d3748',
-    marginBottom: 3,
-  },
-  methodDescription: {
-    fontSize: 14,
-    color: '#718096',
-  },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#cbd5e0',
-  },
-  radioButtonSelected: {
-    backgroundColor: '#4299e1',
-    borderColor: '#4299e1',
-  },
-  securityInfo: {
-    padding: 15,
-    backgroundColor: '#f0fff4',
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#48bb78',
-    marginBottom: 30,
-  },
-  securityText: {
-    color: '#2f855a',
-    fontSize: 14,
-  },
-  buttonWrapper: {
-    marginBottom: Platform.OS === 'ios' ? 40 : 20,
-    alignItems: 'center',
-  },
-  header: {
-  marginBottom: 30,
-  marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 20 : 20,
-  alignItems: 'center',
-},
-title: {
-  fontSize: 24,
-  fontWeight: 'bold',
-  color: '#2d3748',
-  textAlign: 'center',
-  paddingTop: 10,
-},
-
-  continueButton: {
-    backgroundColor: '#4299e1',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
-  },
-  disabledButton: {
-    backgroundColor: '#cbd5e0',
-  },
-  continueButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });

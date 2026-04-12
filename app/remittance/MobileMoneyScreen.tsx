@@ -1,294 +1,443 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { useTransaction } from '../../context/TransactionContext';
-
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-  Dimensions,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-// import { RootStackParamList } from './types'; // ✅ adjust path if needed
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FintechProgress } from "../../components/ui/fintech";
+import {
+  getTransferDraft,
+  mergeTransferDraft,
+} from "../../services/transferDraft";
 
-const { width } = Dimensions.get('window');
-
-type Props = NativeStackScreenProps<RootStackParamList, 'MobileMoney'>;
-
-type MobileProvider = {
+type DeliveryProvider = {
   id: string;
   name: string;
-  countries: string[];
-  currency: string;
+  service: "MobileMoney" | "BankTransfer" | "CashCollection";
+  description?: string;
+  available: boolean;
 };
 
-const MobileMoneyScreen: React.FC<Props> = ({ navigation }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+type CountryCatalog = {
+  currency: string;
+  mobile: DeliveryProvider[];
+  bank: DeliveryProvider[];
+  cash: DeliveryProvider[];
+};
+
+const catalogs: Record<string, CountryCatalog> = {
+  Somalia: {
+    currency: "USD",
+    mobile: [
+      {
+        id: "premier-wallet",
+        name: "Premier Wallet",
+        service: "MobileMoney",
+        available: true,
+      },
+      {
+        id: "e-dahab",
+        name: "e-Dahab",
+        service: "MobileMoney",
+        available: true,
+      },
+      {
+        id: "hormuud-evc",
+        name: "Hormuud EVC Plus",
+        service: "MobileMoney",
+        available: true,
+      },
+    ],
+    bank: [
+      {
+        id: "salam-bank",
+        name: "Salam Bank",
+        service: "BankTransfer",
+        available: true,
+      },
+    ],
+    cash: [
+      {
+        id: "juba-express",
+        name: "Juba Express",
+        service: "CashCollection",
+        description: "Partner agents: Premier Bank",
+        available: true,
+      },
+    ],
+  },
+  Kenya: {
+    currency: "KES",
+    mobile: [
+      { id: "mpesa", name: "M-PESA", service: "MobileMoney", available: true },
+      {
+        id: "airtel-kenya",
+        name: "Airtel Money",
+        service: "MobileMoney",
+        available: true,
+      },
+    ],
+    bank: [
+      {
+        id: "equity-bank",
+        name: "Equity Bank",
+        service: "BankTransfer",
+        available: true,
+      },
+    ],
+    cash: [
+      {
+        id: "juba-express-kenya",
+        name: "Juba Express",
+        service: "CashCollection",
+        available: true,
+      },
+    ],
+  },
+  Ethiopia: {
+    currency: "ETB",
+    mobile: [
+      {
+        id: "telebirr",
+        name: "telebirr",
+        service: "MobileMoney",
+        available: true,
+      },
+    ],
+    bank: [
+      {
+        id: "salam-bank-ethiopia",
+        name: "Salam Bank",
+        service: "BankTransfer",
+        available: true,
+      },
+    ],
+    cash: [
+      {
+        id: "juba-express-ethiopia",
+        name: "Juba Express",
+        service: "CashCollection",
+        available: true,
+      },
+    ],
+  },
+  Uganda: {
+    currency: "UGX",
+    mobile: [
+      {
+        id: "airtel-uganda",
+        name: "Airtel Money",
+        service: "MobileMoney",
+        available: true,
+      },
+      {
+        id: "mtn-momo",
+        name: "MTN MoMo",
+        service: "MobileMoney",
+        available: true,
+      },
+    ],
+    bank: [
+      {
+        id: "salam-bank-uganda",
+        name: "Salam Bank",
+        service: "BankTransfer",
+        available: true,
+      },
+    ],
+    cash: [
+      {
+        id: "juba-express-uganda",
+        name: "Juba Express",
+        service: "CashCollection",
+        available: true,
+      },
+    ],
+  },
+};
+
+export default function MobileMoneyScreen() {
   const router = useRouter();
-  const { transactionData, updateTransaction } = useTransaction();
-
-  const providers: MobileProvider[] = [
-    { id: 'evc', name: 'EVC Plus', countries: ['Somalia'] ,currency:'USD'},
-    { id: 'zaad', name: 'ZAAD', countries: ['Somaliland'],currency:'USD' },
-    { id: 'sahal', name: 'SAHAL', countries: ['Somalia'],currency:'USD' },
-    { id: 'mpesa', name: 'M-PESA', countries: ['Kenya', 'Tanzania'],currency:'TZS' },
-    { id: 'mtn', name: 'MTN Mobile Money', countries: ['Uganda'],currency:'UGX' },
-    { id: 'waqfi', name: 'Waqfi', countries: ['Somalia'] ,currency:'USD'},
-    { id: 'tigo', name: 'Tigo Pesa', countries: ['Tanzania'] ,currency:'TZS'},
-    { id: 'airtel-tz', name: 'Airtel Money', countries: ['Tanzania'],currency:'TZS' },
-    { id: 'airtel-ug', name: 'Airtel Money', countries: ['Uganda'] ,currency:'UGX'},
-    { id: 'salam', name: 'SALAM-PAY', countries: ['Somalia'],currency:'USD' },
-  ];
-
-  const filteredProviders = providers.filter(provider =>
-    provider.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const insets = useSafeAreaInsets();
+  const transactionData = getTransferDraft();
+  const receivingCountry = transactionData.receivingCountry || "Somalia";
+  const countryCatalog = catalogs[receivingCountry] || catalogs.Somalia;
+  const [selectedProviderId, setSelectedProviderId] = useState(
+    transactionData.provider || "",
   );
+
+  const selectedProvider =
+    [
+      ...countryCatalog.mobile,
+      ...countryCatalog.bank,
+      ...countryCatalog.cash,
+    ].find((item) => item.id === selectedProviderId) || null;
 
   const handleContinue = () => {
+    if (!selectedProvider) return;
 
-    if (selectedProvider) {
-    
-      // let id:number = Number(providers)
-      const country = providers.find(p => p.id === selectedProvider)?.countries[0] ||'' ;
-      const currency = providers.find(p=>p.id===selectedProvider)?.currency || '';
-      console.log("receiving currency")
-  updateTransaction({
-  
-  receivingCountry:country,
-  provider: selectedProvider,
-  sendCountry: "Norway",
-  receiveCurrency:currency
-  }
-  
-);
+    mergeTransferDraft({
+      provider: selectedProvider.name,
+      providerName: selectedProvider.name,
+      receivingCountry,
+      receiveCurrency: countryCatalog.currency,
+      service: selectedProvider.service,
+      sendCountry: transactionData.sendCountry || "Norway",
+      sendCurrency: transactionData.sendCurrency || "NOK",
+    });
 
-
-
-      router.push("/transaction/SendMoneyScreen")    }
+    router.push("/transaction/SendMoneyScreen");
   };
-  useEffect(() => {
-
-  }, [transactionData]);
 
   return (
-    <LinearGradient colors={['#f8f9fa', '#e9ecef']} style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Mobile Money Providers</Text>
-          <Text style={styles.headerSubtitle}>Select your mobile money service</Text>
-        </View>
-
-        <View style={styles.searchContainer}>
-          <MaterialIcons name="search" size={24} color="#7f8c8d" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search providers..."
-            placeholderTextColor="#95a5a6"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.providersContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {filteredProviders.map(provider => (
-            <TouchableOpacity
-              key={provider.id}
-              style={[
-                styles.providerCard,
-                selectedProvider === provider.id && styles.selectedProvider,
-              ]}
-              onPress={() => setSelectedProvider(provider.id)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.providerLogoContainer}>
-                <Text style={styles.providerInitials}>
-                  {provider.name
-                    .split(' ')
-                    .map(word => word[0])
-                    .join('')
-                    .slice(0, 3)
-                    .toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.providerInfo}>
-                <Text style={styles.providerName}>{provider.name}</Text>
-                <View style={styles.countryTags}>
-                  {provider.countries.map(country => (
-                    <View key={country} style={styles.countryTag}>
-                      <Text style={styles.countryTagText}>{country}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-              {selectedProvider === provider.id && (
-                <View style={styles.selectedIndicator}>
-                  <MaterialIcons name="check-circle" size={24} color="#27ae60" />
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+    <SafeAreaView style={styles.safeArea}>
+      <View
+        style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}
+      >
+        <FintechProgress step={2} total={5} label="Step 2: Delivery methods" />
 
         <TouchableOpacity
-          style={[
-            styles.continueButton,
-            !selectedProvider && styles.disabledButton,
-          ]}
-          onPress={handleContinue}
-          disabled={!selectedProvider}
-          activeOpacity={0.7}
+          style={styles.closeButton}
+          onPress={() => router.back()}
+          activeOpacity={0.8}
         >
-          <LinearGradient
-            colors={
-              !selectedProvider
-                ? ['#bdc3c7', '#bdc3c7']
-                : ['#3498db', '#2980b9']
-            }
-            style={styles.gradient}
-          >
-            <Text style={styles.continueButtonText}>Continue</Text>
-          </LinearGradient>
+          <Ionicons name="close" size={20} color="#2B2B2B" />
         </TouchableOpacity>
-      </SafeAreaView>
-    </LinearGradient>
+
+        <Text style={styles.screenLabel}>Sending to {receivingCountry}</Text>
+        <Text style={styles.title}>Choose delivery method</Text>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 + Math.max(insets.bottom, 8) }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.sectionBlock}>
+            {countryCatalog.mobile.map((item) => (
+              <ProviderRow
+                key={item.id}
+                item={item}
+                active={selectedProviderId === item.id}
+                onPress={() => item.available && setSelectedProviderId(item.id)}
+              />
+            ))}
+          </View>
+
+          <View style={styles.sectionBlock}>
+            <Text style={styles.sectionTitle}>Cash pickup</Text>
+            <Text style={styles.sectionSubtitle}>
+              Pick up cash at one of the following agents.
+            </Text>
+            {countryCatalog.cash.map((item) => (
+              <ProviderRow
+                key={item.id}
+                item={item}
+                active={selectedProviderId === item.id}
+                onPress={() => item.available && setSelectedProviderId(item.id)}
+              />
+            ))}
+          </View>
+
+          <View style={styles.sectionBlock}>
+            <Text style={styles.sectionTitle}>Bank deposit</Text>
+            <Text style={styles.sectionSubtitle}>
+              Deposit directly to the recipient's bank account.
+            </Text>
+            {countryCatalog.bank.map((item) => (
+              <ProviderRow
+                key={item.id}
+                item={item}
+                active={selectedProviderId === item.id}
+                onPress={() => item.available && setSelectedProviderId(item.id)}
+              />
+            ))}
+          </View>
+        </ScrollView>
+
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, 8) + 12 },
+          ]}
+        >
+          <TouchableOpacity
+            style={[
+              styles.nextButton,
+              !selectedProvider && styles.nextButtonDisabled,
+            ]}
+            onPress={handleContinue}
+            disabled={!selectedProvider}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.nextButtonText}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
   );
-};
+}
+
+function ProviderRow({
+  item,
+  active,
+  onPress,
+}: {
+  item: DeliveryProvider;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.providerRow,
+        active && styles.providerRowActive,
+        !item.available && styles.providerRowDisabled,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.88}
+    >
+      <View style={styles.providerCopy}>
+        <Text
+          style={[styles.providerName, active && styles.providerNameActive]}
+        >
+          {item.name}
+        </Text>
+        {item.description ? (
+          <Text style={styles.providerDescription}>{item.description}</Text>
+        ) : null}
+      </View>
+      {active ? (
+        <Ionicons name="checkmark-circle" size={18} color="#D6A66E" />
+      ) : null}
+    </TouchableOpacity>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   safeArea: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  header: {
-    padding: 20,
-    paddingBottom: 10,
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    backgroundColor: "#FFFFFF",
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2c3e50',
+  closeButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    backgroundColor: "#F7F8FA",
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  screenLabel: {
+    fontSize: 15,
+    color: "#6B7280",
     marginBottom: 4,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
+  title: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 18,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginHorizontal: 20,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchInput: {
+  scrollView: {
     flex: 1,
-    marginLeft: 10,
-    fontSize: 16,
-    color: '#2c3e50',
   },
-  providersContainer: {
-    paddingHorizontal: 15,
-    paddingBottom: 20,
+  scrollContent: {
+    paddingBottom: 16,
   },
-  providerCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+  sectionBlock: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#6B7280",
+    marginBottom: 10,
+  },
+  providerRow: {
+    minHeight: 62,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#eee',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
   },
-  selectedProvider: {
-    borderColor: '#3498db',
-    backgroundColor: '#f0f8ff',
+  providerRowActive: {
+    borderColor: "#BFDBFE",
+    backgroundColor: "#F8FBFF",
   },
-  providerLogoContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
+  providerRowDisabled: {
+    opacity: 0.58,
   },
-  providerInitials: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#3498db',
-  },
-  providerInfo: {
+  providerCopy: {
     flex: 1,
+    paddingVertical: 10,
   },
   providerName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 5,
+    color: "#111827",
+    fontWeight: "600",
   },
-  countryTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  providerNameActive: {
+    color: "#2563EB",
   },
-  countryTag: {
-    backgroundColor: '#e8f4fc',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginRight: 6,
-    marginBottom: 2,
+  providerDescription: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 4,
+    lineHeight: 18,
   },
-  countryTagText: {
-    fontSize: 12,
-    color: '#3498db',
+  footer: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 0,
+    borderTopWidth: 1,
+    borderTopColor: "#EEF2F7",
+    paddingTop: 12,
+    backgroundColor: "#FFFFFF",
   },
-  selectedIndicator: {
-    marginLeft: 10,
+  nextButton: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#2563EB",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#2563EB",
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  continueButton: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 10,
-    overflow: 'hidden',
+  nextButtonDisabled: {
+    backgroundColor: "#F1D9D2",
   },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  gradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  continueButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  nextButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
 });
-
-export default MobileMoneyScreen;

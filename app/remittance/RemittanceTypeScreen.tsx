@@ -1,150 +1,318 @@
-import { FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { useTransaction } from '../../context/TransactionContext';
+import React, { useMemo, useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FintechProgress, fintechColors } from '../../components/ui/fintech';
+import { getTransferDraft, mergeTransferDraft } from '../../services/transferDraft';
 
-import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
+type CountryOption = {
+  id: string;
+  name: string;
+  currency: string;
+  flag: 'somalia' | 'kenya' | 'ethiopia' | 'uganda';
+};
 
-const remittanceOptions = [
-  {
-    id: 'mobile',
-    title: 'Mobile Money',
-    icon: <FontAwesome name="mobile" size={24} color="#fff" />,
-  },
-  {
-    id: 'cash',
-    title: 'Cash Collection',
-    icon: <MaterialIcons name="attach-money" size={24} color="#fff" />,
-  },
-  {
-    id: 'bank',
-    title: 'Bank Transfer',
-    icon: <Ionicons name="business" size={24} color="#fff" />,
-  },
+const countryOptions: CountryOption[] = [
+  { id: 'somalia', name: 'Somalia', currency: 'USD', flag: 'somalia' },
+  { id: 'kenya', name: 'Kenya', currency: 'KES', flag: 'kenya' },
+  { id: 'ethiopia', name: 'Ethiopia', currency: 'ETB', flag: 'ethiopia' },
+  { id: 'uganda', name: 'Uganda', currency: 'UGX', flag: 'uganda' },
 ];
 
-const RemittanceTypeScreen = () => {
-    const { updateTransaction } = useTransaction();
-  
-  const [selected, setSelected] = useState<string | null>(null);
+export default function RemittanceTypeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const transactionData = getTransferDraft();
+  const initialCountry =
+    countryOptions.find((item) => item.name === transactionData.receivingCountry)?.id || 'somalia';
+  const [selectedCountry, setSelectedCountry] = useState(initialCountry);
+
+  const sendingLabel = useMemo(() => {
+    const amount = Number(transactionData.sendAmount || 100).toFixed(2);
+    const currency = transactionData.sendCurrency || 'USD';
+    return `Sending ${amount} ${currency}`;
+  }, [transactionData.sendAmount, transactionData.sendCurrency]);
 
   const handleContinue = () => {
-    // console.log("Select reciving method ",selected)
-    let method = remittanceOptions.find(p=>p.id===selected)?.title
-   const cleaned = method?.replace(/\s+/g, '');
+    const selected = countryOptions.find((item) => item.id === selectedCountry) || countryOptions[0];
 
-
-     updateTransaction({
-         service: cleaned,    
+    mergeTransferDraft({
+      receivingCountry: selected.name,
+      receiveCurrency: selected.currency,
+      provider: '',
+      service: '',
+      sendCountry: transactionData.sendCountry || 'Norway',
+      sendCurrency: transactionData.sendCurrency || 'NOK',
     });
-    // console.log("updated state",transactionData)
-    router.push("/remittance/MobileMoneyScreen")
 
-    // if (selected === 'mobile') {
-    //   router.push('/mobile-money'); // ✅ Make sure this file exists: app/mobile-money.tsx
-    // } else if (selected === 'cash') {
-    //   router.push('/cash-transfer'); // Replace with your actual file if needed
-    // } else if (selected === 'bank') {
-    //   router.push('/bank-transfer'); // Replace with your actual file if needed
-    // }
+    router.push('/remittance/MobileMoneyScreen');
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Select Remittance Type</Text>
-      <ScrollView contentContainerStyle={styles.optionsWrapper}>
-        {remittanceOptions.map((option) => (
-          <TouchableOpacity
-            key={option.id}
-            style={[
-              styles.option,
-              selected === option.id && styles.selectedOption
-            ]}
-            onPress={() => setSelected(option.id)}
-          >
-            <View style={styles.iconCircle}>{option.icon}</View>
-            <Text style={styles.optionText}>{option.title}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
+        <FintechProgress step={1} total={5} label="Step 1: Destination country" />
 
-      <TouchableOpacity
-        style={[
-          styles.continueButton,
-          !selected && styles.disabledButton
-        ]}
-        disabled={!selected}
-        onPress={handleContinue}
-      >
-        <Text style={styles.continueText}>Continue</Text>
-      </TouchableOpacity>
+        <Text style={styles.screenLabel}>Send money</Text>
+        <Text style={styles.title}>Choose destination</Text>
+
+        <View style={styles.countryList}>
+          {countryOptions.map((country) => {
+            const active = selectedCountry === country.id;
+
+            return (
+              <TouchableOpacity
+                key={country.id}
+                style={[styles.countryRow, active && styles.countryRowActive]}
+                onPress={() => setSelectedCountry(country.id)}
+                activeOpacity={0.9}
+              >
+                <View style={styles.countryLeft}>
+                  <CountryFlag kind={country.flag} />
+                  <View>
+                    <Text style={[styles.countryName, active && styles.countryNameActive]}>{country.name}</Text>
+                    <Text style={styles.countryMeta}>{country.currency}</Text>
+                  </View>
+                </View>
+                <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
+                  {active ? <View style={styles.radioInner} /> : null}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
+          <Text style={styles.footerAmount}>{sendingLabel}</Text>
+          <TouchableOpacity
+            style={styles.nextButton}
+            onPress={handleContinue}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.nextButtonText}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </SafeAreaView>
   );
-};
+}
 
-export default RemittanceTypeScreen;
+function CountryFlag({ kind }: { kind: CountryOption['flag'] }) {
+  if (kind === 'somalia') {
+    return (
+      <View style={[styles.flagCircle, styles.flagSomalia]}>
+        <Text style={styles.flagStar}>★</Text>
+      </View>
+    );
+  }
 
+  if (kind === 'kenya') {
+    return (
+      <View style={[styles.flagCircle, styles.flagKenya]}>
+        <View style={styles.flagKenyaDark} />
+        <View style={styles.flagKenyaRed} />
+        <View style={styles.flagKenyaDark} />
+      </View>
+    );
+  }
+
+  if (kind === 'ethiopia') {
+    return (
+      <View style={[styles.flagCircle, styles.flagEthiopia]}>
+        <View style={styles.flagEthiopiaGreen} />
+        <View style={styles.flagEthiopiaYellow} />
+        <View style={styles.flagEthiopiaRed} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.flagCircle, styles.flagUganda]}>
+      <View style={styles.flagUgandaBlack} />
+      <View style={styles.flagUgandaYellow} />
+      <View style={styles.flagUgandaRed} />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 20
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  headerRow: {
+    marginTop: 24,
+    marginBottom: 18,
+  },
+  screenLabel: {
+    marginTop: 18,
+    fontSize: 15,
+    color: '#6B7280',
+    marginBottom: 6,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 20,
-    alignSelf: 'center'
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 18,
   },
-  optionsWrapper: {
-    flexGrow: 1,
+  countryList: {
+    flex: 1,
+    gap: 12,
   },
-  option: {
+  countryRow: {
+    minHeight: 82,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    justifyContent: 'space-between',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  selectedOption: {
-    borderColor: '#2b6cb0',
-    backgroundColor: '#e6f0fa',
+  countryRowActive: {
+    borderColor: '#BFDBFE',
+    backgroundColor: '#F8FBFF',
   },
-  iconCircle: {
-    backgroundColor: '#2b6cb0',
-    padding: 10,
-    borderRadius: 25,
-    marginRight: 15,
-  },
-  optionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  continueButton: {
-    backgroundColor: '#2b6cb0',
-    paddingVertical: 15,
-    borderRadius: 25,
+  countryLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    gap: 14,
   },
-  disabledButton: {
-    backgroundColor: '#b0c4de',
+  countryName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
   },
-  continueText: {
-    color: '#fff',
+  countryNameActive: {
+    color: '#2563EB',
+  },
+  countryMeta: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 3,
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#D3D8DF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterActive: {
+    borderColor: '#2563EB',
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2563EB',
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: '#EEF2F7',
+    paddingTop: 12,
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  footerAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  nextButton: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563EB',
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  nextButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  flagCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E4E4E4',
+  },
+  flagSomalia: {
+    backgroundColor: '#3B86DA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flagStar: {
+    color: '#FFFFFF',
+    fontSize: 12,
+  },
+  flagKenya: {
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-evenly',
+  },
+  flagKenyaDark: {
+    height: 8,
+    backgroundColor: '#1F1F1F',
+  },
+  flagKenyaRed: {
+    height: 8,
+    backgroundColor: '#C93838',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  flagEthiopia: {
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-evenly',
+  },
+  flagEthiopiaGreen: {
+    height: 8,
+    backgroundColor: '#269B57',
+  },
+  flagEthiopiaYellow: {
+    height: 8,
+    backgroundColor: '#E2C94A',
+  },
+  flagEthiopiaRed: {
+    height: 8,
+    backgroundColor: '#D64E4E',
+  },
+  flagUganda: {
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-evenly',
+  },
+  flagUgandaBlack: {
+    height: 8,
+    backgroundColor: '#1F1F1F',
+  },
+  flagUgandaYellow: {
+    height: 8,
+    backgroundColor: '#F2D04D',
+  },
+  flagUgandaRed: {
+    height: 8,
+    backgroundColor: '#D14141',
   },
 });

@@ -1,62 +1,91 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import {
+  FintechHeroCard,
+  FintechInlineMessage,
+  FintechPrimaryButton,
+  FintechScreenHeader,
+  FintechSecondaryButton,
+  FintechStatusPill,
+  FintechTextField,
+  fintechColors,
+} from '../../components/ui/fintech';
 import { useUser } from '../../context/UserContext';
 import { AuthHelpers } from '../../services/AuthHelpers';
+
+const PIN_LENGTH = 4;
 
 export default function SetupPinScreen() {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [secureEntry, setSecureEntry] = useState(true);
-  const [confirmSecureEntry, setConfirmSecureEntry] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
   const router = useRouter();
-  const { user } = useUser();
+  const { preferred } = useLocalSearchParams<{ preferred?: string }>();
+  const { user, userRegistrationData } = useUser();
 
-  // Verify user data is available before allowing PIN setup
+  const selectedMethod = useMemo(
+    () => (preferred === 'biometric' ? 'biometric' : 'pin'),
+    [preferred]
+  );
+
+  const pinsMatch = pin.length === PIN_LENGTH && confirmPin.length === PIN_LENGTH && pin === confirmPin;
+  const hasMismatch = confirmPin.length === PIN_LENGTH && pin !== confirmPin;
+
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && user?.email) {
       setIsReady(true);
-    } else {
-      Alert.alert('Error', 'User information not available. Please sign in again.');
-      router.replace('/login');
+      return;
     }
-  }, [user]);
+
+    Alert.alert('Session required', 'Sign in again before setting up quick login.');
+    router.replace('/(auth)/login');
+  }, [router, user?.email, user?.id]);
 
   const handleSubmit = async () => {
     if (!isReady) return;
 
-    if (pin.length !== 4 || confirmPin.length !== 4) {
-      Alert.alert('Error', 'PIN must be exactly 4 digits');
+    if (!userRegistrationData.password.trim()) {
+      Alert.alert(
+        'Session required',
+        'Your login password is missing. Please sign in again.',
+        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
+      );
+      return;
+    }
+
+    if (!/^\d{4}$/.test(pin) || !/^\d{4}$/.test(confirmPin)) {
+      Alert.alert('Invalid PIN', 'PIN must be exactly 4 digits.');
       return;
     }
 
     if (pin !== confirmPin) {
-      Alert.alert('Error', 'PINs do not match');
+      Alert.alert('PIN mismatch', 'Both PIN entries must match.');
       return;
     }
 
     setIsLoading(true);
     try {
-      // First setup PIN with backend (if applicable)
-      // await yourBackendService.setupPin(user.id, pin);
-      
-      // Then enable quick login locally
-      const success = await AuthHelpers.enableQuickLogin(user.id, pin);
-      
-      if (success) {
-        Alert.alert('Success', 'Your PIN has been set successfully. You can now use your PIN or biometrics to login.', [
-          { text: 'OK', onPress: () => router.replace('/(auth)/authenticate') }
-        ]);
-      } else {
-        throw new Error('Failed to save PIN to device');
-      }
-    } catch (error) {
-      console.error('PIN setup failed:', error);
-      Alert.alert('Error', error.message || 'Failed to setup PIN. Please try again.');
+      await AuthHelpers.enableQuickLogin(user!.email, pin, userRegistrationData.password);
+      Alert.alert(
+        selectedMethod === 'biometric' ? 'Quick login enabled' : 'PIN enabled',
+        selectedMethod === 'biometric'
+          ? 'Biometric unlock is ready. Your PIN remains as backup.'
+          : 'Your PIN is ready for future sign-ins.',
+        [{ text: 'Continue', onPress: () => router.replace('/transaction/RecentTransactions') }]
+      );
+    } catch (error: any) {
+      Alert.alert('Setup failed', error?.message || 'Could not save your PIN. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -64,192 +93,104 @@ export default function SetupPinScreen() {
 
   if (!isReady) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#4f46e5" />
-      </View>
+      <SafeAreaView style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={fintechColors.primary} />
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <MaterialIcons name="lock" size={48} color="#4f46e5" style={styles.icon} />
-      <Text style={styles.title}>Secure Your Account</Text>
-      <Text style={styles.description}>
-        Set a 4-digit PIN to protect your account. You can also use biometrics.
-      </Text>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Enter 4-digit PIN</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="••••"
-            placeholderTextColor="#9ca3af"
-            keyboardType="numeric"
-            maxLength={4}
-            secureTextEntry={secureEntry}
-            value={pin}
-            onChangeText={setPin}
-            editable={!isLoading}
-            autoFocus
-          />
-          <TouchableOpacity 
-            onPress={() => setSecureEntry(!secureEntry)} 
-            style={styles.eyeIcon}
-            disabled={isLoading}
-          >
-            <MaterialIcons 
-              name={secureEntry ? 'visibility-off' : 'visibility'} 
-              size={22} 
-              color="#6b7280" 
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Confirm 4-digit PIN</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="••••"
-            placeholderTextColor="#9ca3af"
-            keyboardType="numeric"
-            maxLength={4}
-            secureTextEntry={confirmSecureEntry}
-            value={confirmPin}
-            onChangeText={setConfirmPin}
-            editable={!isLoading}
-          />
-          <TouchableOpacity 
-            onPress={() => setConfirmSecureEntry(!confirmSecureEntry)} 
-            style={styles.eyeIcon}
-            disabled={isLoading}
-          >
-            <MaterialIcons 
-              name={confirmSecureEntry ? 'visibility-off' : 'visibility'} 
-              size={22} 
-              color="#6b7280" 
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <TouchableOpacity 
-        style={[styles.button, isLoading && styles.disabledButton]} 
-        onPress={handleSubmit}
-        disabled={isLoading || !pin || !confirmPin}
-        activeOpacity={0.8}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
       >
-        {isLoading ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text style={styles.buttonText}>Save PIN</Text>
-        )}
-      </TouchableOpacity>
+        <View style={styles.container}>
+          <FintechScreenHeader
+            eyebrow="Set PIN"
+            title="Create your quick login PIN"
+            subtitle="Keep it short, private, and easy to remember."
+            right={<FintechStatusPill icon="lock-closed-outline" label="4 digits" tone="info" />}
+          />
 
-      <View style={styles.biometricTip}>
-        <MaterialIcons name="fingerprint" size={20} color="#6b7280" />
-        <Text style={styles.biometricText}> You can also use fingerprint or Face ID</Text>
-      </View>
-    </View>
+          <FintechHeroCard
+            title={selectedMethod === 'biometric' ? 'PIN backup required' : 'PIN required'}
+            subtitle={selectedMethod === 'biometric'
+              ? 'Biometric unlock still keeps a PIN backup for recovery.'
+              : 'Use this PIN the next time you open the app.'}
+          >
+            <View style={styles.form}>
+              <FintechTextField
+                label="New PIN"
+                icon="keypad-outline"
+                placeholder="4 digits"
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={4}
+                value={pin}
+                onChangeText={(value) => setPin(value.replace(/\D/g, ''))}
+              />
+              <FintechTextField
+                label="Confirm PIN"
+                icon="shield-outline"
+                placeholder="Repeat PIN"
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={4}
+                value={confirmPin}
+                onChangeText={(value) => setConfirmPin(value.replace(/\D/g, ''))}
+                error={hasMismatch ? 'PIN entries do not match.' : undefined}
+              />
+            </View>
+          </FintechHeroCard>
+
+          <FintechInlineMessage
+            tone={pinsMatch ? 'success' : 'info'}
+            text={pinsMatch
+              ? 'Your PIN is ready to save.'
+              : 'Choose a 4-digit PIN and enter it twice.'}
+          />
+
+          <View style={styles.actions}>
+            <FintechPrimaryButton
+              onPress={handleSubmit}
+              loading={isLoading}
+              disabled={!pinsMatch || isLoading}
+            >
+              Save quick login
+            </FintechPrimaryButton>
+            <FintechSecondaryButton label="Back" onPress={() => router.replace('/(auth)/enable-quick-login')} />
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 24, 
-    justifyContent: 'center', 
-    backgroundColor: '#f8fafc' 
-  },
-  loadindContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  icon: { 
-    alignSelf: 'center', 
-    marginBottom: 16 
-  },
-  title: { 
-    fontSize: 24, 
-    fontWeight: '700', 
-    textAlign: 'center', 
-    marginBottom: 8, 
-    color: '#1e293b' 
-  },
-  description: { 
-    fontSize: 15, 
-    color: '#64748b', 
-    textAlign: 'center', 
-    marginBottom: 32,
-    lineHeight: 22,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#334155',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderColor: '#e2e8f0',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-    elevation: 1,
-  },
-  input: {
+  safeArea: {
     flex: 1,
-    height: 56,
-    fontSize: 18,
-    letterSpacing: 4,
-    color: '#1e293b',
-    fontWeight: '600',
+    backgroundColor: fintechColors.background,
   },
-  eyeIcon: {
-    padding: 8,
-    marginLeft: 4,
-  },
-  button: {
-    backgroundColor: '#4f46e5',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 24,
-    shadowColor: '#4f46e5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  disabledButton: {
-    backgroundColor: '#c7d2fe',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  biometricTip: {
-    marginTop: 24,
-    flexDirection: 'row',
+  loadingScreen: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: fintechColors.background,
   },
-  biometricText: {
-    color: '#64748b',
-    fontSize: 14,
-    marginLeft: 6,
+  flex: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 24,
+    gap: 18,
+  },
+  form: {
+    gap: 14,
+  },
+  actions: {
+    gap: 10,
   },
 });

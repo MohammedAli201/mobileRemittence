@@ -1,10 +1,11 @@
 // app/_layout.tsx
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { useFonts } from 'expo-font';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { TransactionProvider } from '../context/TransactionContext';
+import AppResumeLock from '../components/AppResumeLock';
 import { UserProvider } from '../context/UserContext';
 
 export default function RootLayout() {
@@ -15,18 +16,18 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    // <StripeProvider
-    //   publishableKey={process.env.EXPO_PUBLIC_STRIPE_PK!}
-    //   urlScheme="moodtracker"               // must match app.json "scheme"
-    // >
+    <StripeProvider
+      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PK!}
+      merchantIdentifier="merchant.com.your.app" // For Apple Pay
+      urlScheme="moodtracker" // Must match your app.json scheme
+    >
       <UserProvider>
-        <TransactionProvider>
-          <ThemeProvider value={cs === 'dark' ? DarkTheme : DefaultTheme}>
-            <Slot />                         {/* renders child routes */}
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </TransactionProvider>
+        <ThemeProvider value={cs === 'dark' ? DarkTheme : DefaultTheme}>
+          <AppResumeLock />
+          <Slot />
+          <StatusBar style="auto" />
+        </ThemeProvider>
       </UserProvider>
-    // </StripeProvider>
+    </StripeProvider>
   );
 }

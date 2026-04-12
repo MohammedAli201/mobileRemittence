@@ -14,13 +14,13 @@ const FingerprintScreen: React.FC<Props> = ({ onVisitorId }) => {
   const [fallbackUsed, setFallbackUsed] = React.useState(false);
 
   const getDeviceId = () => {
-    console.log('Generating fallback device ID...');
     try {
       const { width, height, scale, fontScale } = Dimensions.get('window');
+      const iosPlatform = Platform as typeof Platform & { isPad?: boolean };
       const deviceInfo = {
         platform: Platform.OS,
         osVersion: Platform.Version,
-        deviceType: Platform.isPad ? 'tablet' : 'phone',
+        deviceType: Platform.OS === 'ios' && iosPlatform.isPad ? 'tablet' : 'phone',
         screenSize: `${width}x${height}`,
         scale,
         fontScale,
@@ -29,11 +29,9 @@ const FingerprintScreen: React.FC<Props> = ({ onVisitorId }) => {
       const deviceString = JSON.stringify(deviceInfo);
       const deviceHash = simpleHash(deviceString);
       
-      console.log('Generated device fingerprint:', deviceHash);
       onVisitorId(`device_${deviceHash}`);
       return true;
-    } catch (error) {
-      console.warn('Device ID generation failed, using UUID fallback:', error);
+    } catch {
       onVisitorId(`uuid_${uuidv4()}`);
       return false;
     }
@@ -50,14 +48,11 @@ const FingerprintScreen: React.FC<Props> = ({ onVisitorId }) => {
   };
 
   const handleMessage = (event: WebViewMessageEvent) => {
-    console.log('WebView message received:', event.nativeEvent.data);
     const { data } = event.nativeEvent;
     
     if (data && data !== "error") {
-      console.log('FingerprintJS successful, ID:', data);
       onVisitorId(`fp_${data}`);
     } else {
-      console.log('FingerprintJS failed, attempting fallback...');
       if (!fallbackUsed) {
         setFallbackUsed(true);
         getDeviceId();
@@ -73,16 +68,12 @@ const FingerprintScreen: React.FC<Props> = ({ onVisitorId }) => {
     </head>
     <body>
       <script>
-        console.log('FingerprintJS script loading...');
         (async () => {
           try {
             const fp = await FingerprintJS.load();
-            console.log('FingerprintJS loaded, getting visitorId...');
             const result = await fp.get();
-            console.log('Got visitorId:', result.visitorId);
             window.ReactNativeWebView.postMessage(result.visitorId);
           } catch (e) {
-            console.error('FingerprintJS error:', e);
             window.ReactNativeWebView.postMessage("error");
           }
         })();
@@ -97,17 +88,13 @@ const FingerprintScreen: React.FC<Props> = ({ onVisitorId }) => {
       source={{ html: htmlContent }}
       javaScriptEnabled={true}
       onMessage={handleMessage}
-      onLoad={() => console.log('WebView loaded successfully')}
       onError={(syntheticEvent) => {
-        const { nativeEvent } = syntheticEvent;
-        console.warn('WebView error:', nativeEvent);
         if (!fallbackUsed) {
           setFallbackUsed(true);
           getDeviceId();
         }
       }}
       onHttpError={(syntheticEvent) => {
-        console.warn('WebView HTTP error:', syntheticEvent.nativeEvent);
         if (!fallbackUsed) {
           setFallbackUsed(true);
           getDeviceId();

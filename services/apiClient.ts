@@ -1,17 +1,30 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
+const normalizeApiBaseUrl = (rawUrl?: string) => {
+  const normalized = rawUrl?.trim().replace(/\/+$/, "");
 
+  if (normalized) {
+    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
+  }
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+  throw new Error(
+    "EXPO_PUBLIC_API_URL is required in production. Example: https://your-domain.com/api",
+  );
+};
 
-const API_BASE_URL = 'https://f6255912a628.ngrok-free.app/api';
+// EXPO_PUBLIC_API_URL should include the base path, e.g. http://localhost:5269/api
+const API_BASE_URL = normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_URL);
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    'ngrok-skip-browser-warning': 'true',
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "ngrok-skip-browser-warning": "true",
   },
   withCredentials: false,
 });
@@ -19,13 +32,15 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('token');
+    const token =
+      (await SecureStore.getItemAsync("authToken")) ||
+      (await AsyncStorage.getItem("token"));
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor
@@ -36,97 +51,165 @@ apiClient.interceptors.response.use(
       await clearUserData();
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Storage helpers
 export const persistUserData = async (token: string, user: any) => {
-  await AsyncStorage.setItem('token', token);
-  await AsyncStorage.setItem('user', JSON.stringify(user));
+  await Promise.all([
+    SecureStore.setItemAsync("authToken", token),
+    AsyncStorage.setItem("token", token),
+    AsyncStorage.setItem("user", JSON.stringify(user)),
+  ]);
 };
 
 export const clearUserData = async () => {
-  await AsyncStorage.removeItem('token');
-  await AsyncStorage.removeItem('user');
+  await Promise.all([
+    SecureStore.deleteItemAsync("authToken"),
+    AsyncStorage.removeItem("token"),
+    AsyncStorage.removeItem("user"),
+  ]);
 };
 
 /**
  * Auth Service
  */
 export const AuthService = {
+  register: async (payload: {
+    fullName: string;
+    email: string;
+    password: string;
+    phoneNumber?: string;
+  }) => {
+    const [firstName, ...rest] = payload.fullName.trim().split(/\s+/);
+    const lastName = rest.join(" ");
+    const candidateEndpoints = ["/auth/register", "/auth/signup"];
+
+    let lastError: Error | null = null;
+
+    for (const endpoint of candidateEndpoints) {
+      try {
+        const response = await apiClient.post(endpoint, {
+          FullName: payload.fullName.trim(),
+          FirstName: firstName || payload.fullName.trim(),
+          LastName: lastName,
+          Email: payload.email.trim().toLowerCase(),
+          Password: payload.password,
+          PhoneNumber: payload.phoneNumber?.trim() || "",
+        });
+
+        const data = response.data ?? {};
+        const nested = data.Data || data.data || data;
+        const token = nested.Token || nested.token;
+        const user = nested.User || nested.user;
+
+        if (token && user) {
+          await persistUserData(token, {
+            ...nested,
+            ...user,
+          });
+        }
+
+        return nested;
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status === 404 || status === 405) {
+          lastError = error;
+          continue;
+        }
+
+        throw error?.response?.data?.message
+          ? new Error(error.response.data.message)
+          : error;
+      }
+    }
+
+    throw new Error(lastError?.message || "Registration is not available right now.");
+  },
   login: async (email: string, password: string) => {
     try {
-      const response = await apiClient.post('/auth/login', {
+      const response = await apiClient.post("/auth/login", {
         Email: email,
         Password: password,
       });
 
       const { Token, User } = response.data;
-      if (!Token || !User) throw new Error('Invalid login response');
+      if (!Token || !User) throw new Error("Invalid login response");
 
-      await persistUserData(Token, User);
-      return { token: Token, user: User };
-    } catch (error: any) {
-      console.error('Login failed:', error);
-      throw error?.response?.data?.message
-        ? new Error(error.response.data.message)
-        : error;
-    }
-  },
-  resetPin: async (pin:string)=>{
-
-  try {
-      const response = await apiClient.post('/auth/reset-pin', {
-        pin
-        ,
+      await persistUserData(Token, {
+        ...response.data,
+        ...User,
       });
-
-      const { Token, User } = response.data;
-      if (!Token || !User) throw new Error('Invalid PIN login response');
-
-      await persistUserData(Token, User);
-      return { token: Token, user: User };
+      return response.data;
     } catch (error: any) {
-      console.error('PIN login failed:', error);
+      if (axios.isAxiosError(error) && !error.response) {
+        throw new Error(`Cannot reach server at ${API_BASE_URL}/auth/login.`);
+      }
       throw error?.response?.data?.message
         ? new Error(error.response.data.message)
         : error;
     }
   },
-
-  logInWithPin: async (userId: string, pin: string) => {
+  resetPin: async (pin: string) => {
     try {
-      const response = await apiClient.post('/auth/pin-login', {
-        userId,
+      const response = await apiClient.post("/auth/reset-pin", {
         pin,
       });
 
       const { Token, User } = response.data;
-      if (!Token || !User) throw new Error('Invalid PIN login response');
+      if (!Token || !User) throw new Error("Invalid PIN login response");
 
       await persistUserData(Token, User);
       return { token: Token, user: User };
     } catch (error: any) {
-      console.error('PIN login failed:', error);
       throw error?.response?.data?.message
         ? new Error(error.response.data.message)
         : error;
     }
   },
 
-  setupPin: async (pin: string) => {
+  logInWithPin: async (email: string, pin: string) => {
     try {
-      const response = await apiClient.post('/auth/setup-pin', {
+      const response = await apiClient.post("/auth/pin-login", {
+        email: email.trim().toLowerCase(),
         pin,
       });
 
-      const { Token, User } = response.data;
-      if (!Token || !User) throw new Error('Invalid PIN login response');
+      const data = response.data ?? {};
+      const payload = data.Data || data.data || data;
+      const token = payload.Token || payload.token;
+      const user = payload.User || payload.user;
 
-      await persistUserData(Token, User);
-      return { token: Token, user: User };
+      if (!token || !user) throw new Error("Invalid PIN login response");
+
+      await persistUserData(token, {
+        ...payload,
+        ...user,
+      });
+      return { token, user, ...payload };
     } catch (error: any) {
-      console.error('PIN login failed:', error);
+      throw error?.response?.data?.message
+        ? new Error(error.response.data.message)
+        : error;
+    }
+  },
+
+  setupPin: async (pin: string, currentPassword: string) => {
+    try {
+      const response = await apiClient.post("/auth/setup-pin", {
+        pin,
+        currentPassword,
+      });
+
+      const { Token, User } = response.data ?? {};
+
+      if (Token && User) {
+        await persistUserData(Token, User);
+        return { token: Token, user: User, ...response.data };
+      }
+
+      return response.data;
+    } catch (error: any) {
       throw error?.response?.data?.message
         ? new Error(error.response.data.message)
         : error;
@@ -138,20 +221,20 @@ export const AuthService = {
   },
 
   getCurrentUser: async () => {
-    const json = await AsyncStorage.getItem('user');
+    const json = await AsyncStorage.getItem("user");
     return json ? JSON.parse(json) : null;
   },
 
   saveDeviceInfo: async (fingerprint: any) => {
     try {
-      const result = await apiClient.post('/auth/register-device', {
+      const result = await apiClient.post("/auth/register-device", {
         VisitorId: fingerprint.visitorId,
         IP: fingerprint.ip,
         Browser: fingerprint.browserName,
         Device: fingerprint.device,
         OperatingSystem: fingerprint.os,
         OSVersion: fingerprint.osVersion,
-        Country: 'NO',
+        Country: "NO",
         IsVPN: false,
         IsIncognito: fingerprint.incognito,
         IsEmulator: false,
@@ -161,7 +244,6 @@ export const AuthService = {
 
       return result.data;
     } catch (error) {
-      console.error('Register device failed:', error);
       throw error;
     }
   },
@@ -173,10 +255,9 @@ export const AuthService = {
 export const LocationService = {
   getUserCountry: async () => {
     try {
-      const res = await axios.get('https://ipapi.co/json/');
+      const res = await axios.get("https://ipapi.co/json/");
       return res.data.country_name;
     } catch (error) {
-      console.error('Location error:', error);
       return null;
     }
   },
@@ -187,19 +268,24 @@ export const LocationService = {
  */
 export const TransactionService = {
   fetchExchangeRate: async (fromCurrency: string, toCurrency: string) => {
-
-    if (!fromCurrency || !toCurrency)
-      throw new Error('Missing currencies');
+    if (!fromCurrency || !toCurrency) throw new Error("Missing currencies");
 
     try {
-      const res = await apiClient.post('/test/rate-exchange', {
-        fromCurrency,
-        toCurrency,
+      const res = await apiClient.post("/transfer/quote", {
+        sendAmount: 1000,
+        sendCurrency: fromCurrency,
+        receiveCurrency: toCurrency,
       });
-      return res.data;
+      return res.data?.Data ?? res.data;
     } catch (error) {
-      console.error('Exchange fetch failed:', error);
       return {
+        quoteId: "",
+        sendAmount: 1000,
+        sendCurrency: fromCurrency,
+        receiveAmount: 1000,
+        receiveCurrency: toCurrency,
+        fee: 0,
+        totalAmount: 1000,
         EffectiveRate: 1.0621,
         FeeRateNokPerUsd: 0.05,
         ExchangeRate: 1,
@@ -210,51 +296,138 @@ export const TransactionService = {
     }
   },
 
+  createQuote: async (payload: {
+    sendAmount: number;
+    sendCurrency: string;
+    receiveCurrency: string;
+  }) => {
+    const res = await apiClient.post("/transfer/quote", payload);
+    return res.data?.Data ?? res.data;
+  },
+
   validateAmount: async (amount: number, currency: string) => {
     try {
-      const res = await apiClient.post('/test/validate-amount', {
+      const res = await apiClient.post("/test/validate-amount", {
         sendAmount: amount,
         sendCurrency: currency,
       });
       return res.data;
-    } catch (error) {
+    } catch (error: any) {
       return {
         isValid: false,
-        message: error.response?.data?.error?.message || 'Validation failed',
+        message: error.response?.data?.error?.message || "Validation failed",
       };
     }
   },
 
   initiateTransfer: async (transferData: any) => {
     try {
-      const res = await apiClient.post('/test/create-transfer', transferData);
+      const res = await apiClient.post("/test/create-transfer", transferData);
       return res.data;
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(
-        error.response?.data?.Error || error.message || 'Transfer failed'
+        error.response?.data?.Error || error.message || "Transfer failed",
       );
     }
   },
 
+  createPaymentSession: async (transferData: any) => {
+    try {
+      const idempotencyKey =
+        transferData?.idempotencyKey ||
+        transferData?.IdempotencyKey ||
+        `mobile-${Date.now()}`;
+      const payload = {
+        ...transferData,
+        idempotencyKey: idempotencyKey,
+      };
+      const requestHeaders = {
+        "Idempotency-Key": idempotencyKey,
+        "idempotency-key": idempotencyKey,
+        "X-Idempotency-Key": idempotencyKey,
+      };
+
+      const res = await apiClient.request({
+        url: "/transfers",
+        method: "POST",
+        data: payload,
+        headers: requestHeaders,
+      });
+
+      return res.data?.Data ?? res.data;
+    } catch (error: any) {
+      const responseData = error?.response?.data;
+      const validationMessage =
+        responseData?.errors
+          ? Object.values(responseData.errors)
+              .flat()
+              .filter(Boolean)
+              .join(", ")
+          : null;
+
+      throw new Error(
+        validationMessage ||
+          responseData?.message ||
+          responseData?.Message ||
+          responseData?.error ||
+          responseData?.title ||
+          error?.message ||
+          "Payment session setup failed",
+      );
+    }
+  },
+
+  confirmTransferAfterPayment: async (payload: any) => {
+    const candidateEndpoints = [
+      "/test/confirm-transfer",
+      "/transfer/confirm",
+      "/transfer/confirm-payment",
+    ];
+
+    let lastError: Error | null = null;
+
+    for (const endpoint of candidateEndpoints) {
+      try {
+        const res = await apiClient.post(endpoint, payload);
+        return res.data;
+      } catch (error: any) {
+        const status = error?.response?.status;
+
+        if (status === 404 || status === 405) {
+          lastError = error;
+          continue;
+        }
+
+        throw new Error(
+          error?.response?.data?.Message ||
+            error?.response?.data?.error ||
+            error?.message ||
+            "Transfer confirmation failed",
+        );
+      }
+    }
+
+    throw new Error(
+      lastError?.message || "No transfer confirmation endpoint is available",
+    );
+  },
+
   fetchAllTransaction_by_admin: async (filters = {}) => {
     try {
-      const res = await apiClient.get('/transfer/transactions/all', {
+      const res = await apiClient.get("/transfer/transactions/all", {
         params: filters,
       });
       return res.data?.Data ?? [];
     } catch (error) {
-      console.error('Admin transaction fetch failed:', error);
       return [];
     }
   },
 
   fetchAllTransaction: async () => {
     try {
-      const res = await apiClient.get('/transfer/transactions/user');
-      console.log(res.data.Data);
+      const res = await apiClient.get("/transfer/transactions/user");
       return res.data;
     } catch (error) {
-      console.error('User transaction fetch failed:', error);
       return [];
     }
   },
@@ -270,12 +443,12 @@ export const TransactionService = {
   },
 
   isVPN: async (ip: string) => {
-    const res = await apiClient.get('/test/is-vpn', { params: { ip } });
+    const res = await apiClient.get("/test/is-vpn", { params: { ip } });
     return res.data;
   },
 
   transactionLimitTracker: async () => {
-    const res = await apiClient.get('/test/transactionLimitTracker');
+    const res = await apiClient.get("/test/transactionLimitTracker");
     return res.data;
   },
 };
@@ -285,16 +458,13 @@ export const TransactionService = {
  */
 export const RecipientService = {
   getAllRecipients: async () => {
-    const res = await apiClient.get('/recipients/get-all-recipient');
-    if (!res.data?.Success) {
-      throw new Error(res.data?.Message || 'Request failed');
-    }
+    const res = await apiClient.get("/recipients/get-all-recipient");
     return res.data;
   },
 
   addRecipient: async (data: any) => {
-    const res = await apiClient.post('/recipients/by-user', data);
-    return res.data;
+    const res = await apiClient.post("/recipients", data);
+    return res.data?.Data ?? res.data;
   },
 };
 

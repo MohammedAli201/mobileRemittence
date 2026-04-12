@@ -1,723 +1,260 @@
-// import { FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
-// import { useRouter } from 'expo-router';
-// import React, { useEffect, useState } from 'react';
-
-// import {
-//   ActivityIndicator,
-//   FlatList,
-//   Image,
-//   RefreshControl,
-//   StyleSheet,
-//   Text,
-//   TouchableOpacity,
-//   View
-// } from 'react-native';
-// import { TransactionService } from '../services/apiClient';
-
-// const RecentTransactions = () => {
-//     const router = useRouter();
-  
-//   const [transactions, setTransactions] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [refreshing, setRefreshing] = useState(false);
-
-//   const fetchRecentTransactions = async () => {
-//     try {
-//       const response = await TransactionService.getRecentTransaction();
-//       const formattedTransactions = response.map(tx => ({
-//         id: tx.Id,
-//         name: tx.RecipientName || 'Unknown Recipient',
-//         date: new Date(tx.CreatedAt).toLocaleDateString('en-US', {
-//           day: '2-digit',
-//           month: 'short',
-//           year: 'numeric',
-//           hour: '2-digit',
-//           minute: '2-digit'
-//         }),
-//         type: tx.Service || 'Transfer',
-//         status: tx.Status,
-//         amount: tx.TotalAmount.toFixed(2),
-//         currency: tx.SendCurrency,
-//         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(tx.RecipientName || 'U')}&background=random`
-//       }));
-//       setTransactions(formattedTransactions);
-//     } catch (error) {
-//       console.error('Failed to fetch transactions:', error);
-//     } finally {
-//       setLoading(false);
-//       setRefreshing(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchRecentTransactions();
-//   }, []);
-
-//   const handleRefresh = () => {
-//     setRefreshing(true);
-//     fetchRecentTransactions();
-//   };
-
-//   const getStatusColor = (status) => {
-//     switch (status) {
-//       case 'Completed':
-//       case 'Paid':
-//         return '#27ae60';
-//       case 'Failed':
-//         return '#e74c3c';
-//       case 'Pending':
-//         return '#f39c12';
-//       default:
-//         return '#7f8c8d';
-//     }
-//   };
-
-//   const getServiceIcon = (serviceType) => {
-//     switch (serviceType) {
-//       case 'MobileWallet':
-//       case 'Mobile Money':
-//         return <FontAwesome name="mobile" size={22} color="#3498db" style={styles.typeIcon} />;
-//       case 'Cash Collection':
-//         return <MaterialIcons name="attach-money" size={20} color="#27ae60" style={styles.typeIcon} />;
-//       default:
-//         return <Ionicons name="send" size={20} color="#9b59b6" style={styles.typeIcon} />;
-//     }
-//   };
-
-//   const renderItem = ({ item }) => (
-//     <TouchableOpacity style={styles.transferItem}>
-//       <View style={styles.avatarContainer}>
-//         <Image source={{ uri: item.avatar }} style={styles.avatar} />
-//         {getServiceIcon(item.type)}
-//       </View>
-      
-//       <View style={styles.transferDetails}>
-//         <View style={styles.transferHeader}>
-//           <Text style={styles.name}>{item.name}</Text>
-//           <Text style={styles.amount}>{`${item.amount} ${item.currency}`}</Text>
-//         </View>
-        
-//         <View style={styles.transferMeta}>
-//           <Text style={styles.date}>{item.date}</Text>
-//           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-//             <Text style={styles.statusText}>{item.status}</Text>
-//           </View>
-//         </View>
-        
-//         <Text style={styles.typeText}>{item.type}</Text>
-//       </View>
-      
-//       {item.status === 'Pending' && (
-//         <TouchableOpacity style={styles.collectButton}>
-//           <Ionicons name="refresh" size={18} color="#fff" />
-//         </TouchableOpacity>
-//       )}
-//     </TouchableOpacity>
-//   );
-
-//   if (loading && transactions.length === 0) {
-//     return (
-//       <View style={styles.loadingContainer}>
-//         <ActivityIndicator size="large" color="#3498db" />
-//       </View>
-//     );
-//   }
-
-//   return (
-//     <View style={styles.container}>
-//       <View style={styles.header}>
-//         <Text style={styles.headerTitle}>Recent Transfers</Text>
-//         <TouchableOpacity>
-//           <Text style={styles.headerAction}>Filter</Text>
-//         </TouchableOpacity>
-//       </View>
-
-//       <FlatList
-//         data={transactions}
-//         keyExtractor={(item) => item.id}
-//         renderItem={renderItem}
-//         contentContainerStyle={styles.listContent}
-//         showsVerticalScrollIndicator={false}
-//         refreshControl={
-//           <RefreshControl
-//             refreshing={refreshing}
-//             onRefresh={handleRefresh}
-//             tintColor="#3498db"
-//           />
-//         }
-//         ListEmptyComponent={
-//           <View style={styles.emptyContainer}>
-//             <Text style={styles.emptyText}>No recent transactions found</Text>
-//           </View>
-//         }
-//       />
-//          <View style={styles.announcement}>
-//                 <Text style={styles.announcementText}>
-//                   <Text style={styles.announcementBold}>Important:</Text> We are regulated by the{' '}
-//                   <Text style={styles.announcementBold}>Swedish Financial Supervisory Authority</Text> with institution number{' '}
-//                   <Text style={styles.announcementBold}>45577</Text>.
-//                 </Text>
-//               </View>
-      
-//               <View style={styles.navBar}>
-//                 <TouchableOpacity style={styles.navItem}>
-//                   <Ionicons name="call-outline" size={24} color="#6b7280" />
-//                   <Text style={styles.navText}>Contact Us</Text>
-//                 </TouchableOpacity>
-//                 <TouchableOpacity 
-//                   style={styles.navItem}
-//                   onPress={() => router.push('/RemittanceTypeScreen')}
-//                 >
-//                   <View style={styles.navActive}>
-//                     <Ionicons name="send" size={24} color="#2b6cb0" />
-//                   </View>
-//                   <Text style={[styles.navText, styles.navActiveText]}>Send Money</Text>
-//                 </TouchableOpacity>
-//                 <TouchableOpacity 
-//                   style={styles.navItem}
-//                   onPress={() => router.push('/transactionList')}
-//                 >
-//                   <MaterialIcons name="list" size={24} color="#6b7280" />
-//                   <Text style={styles.navText}>Transfers</Text>
-//                 </TouchableOpacity>
-//               </View>
-//     </View>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#f8f9fa',
-//     paddingTop: 16,
-//   },
-//   loadingContainer: {
-//     flex: 1,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//   },
-//   emptyContainer: {
-//     flex: 1,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     padding: 20,
-//   },
-//   emptyText: {
-//     fontSize: 16,
-//     color: '#7f8c8d',
-//   },
-//   header: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     alignItems: 'center',
-//     paddingHorizontal: 20,
-//     marginBottom: 16,
-//   },
-//    announcement: {
-//     backgroundColor: '#e0f2fe',
-//     padding: 16,
-//     borderRadius: 12,
-//     marginTop: 16,
-//     marginBottom: 8,
-//   },
-//   announcementText: {
-//     color: '#1e3a8a',
-//     fontSize: 13,
-//     lineHeight: 20,
-//   },
-//   announcementBold: {
-//     fontWeight: '600',
-//   },
-//   navBar: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-around',
-//     paddingVertical: 12,
-//     borderTopWidth: 1,
-//     borderTopColor: '#e5e7eb',
-//     backgroundColor: '#fff',
-//     position: 'absolute',
-//     bottom: 0,
-//     left: 0,
-//     right: 0,
-//     paddingHorizontal: 20,
-//   },
-//   navItem: {
-//     alignItems: 'center',
-//     paddingHorizontal: 12,
-//   },
-//   navActive: {
-//     backgroundColor: '#dbeafe',
-//     width: 48,
-//     height: 48,
-//     borderRadius: 24,
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//     marginBottom: 4,
-//   },
-//   headerTitle: {
-//     fontSize: 22,
-//     fontWeight: '700',
-//     color: '#2c3e50',
-//   },
-//   headerAction: {
-//     fontSize: 16,
-//     color: '#3498db',
-//     fontWeight: '500',
-//   },
-//   listContent: {
-//     paddingHorizontal: 16,
-//     paddingBottom: 20,
-//   },
-//   transferItem: {
-//     backgroundColor: '#fff',
-//     borderRadius: 12,
-//     padding: 16,
-//     marginBottom: 12,
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 2 },
-//     shadowOpacity: 0.05,
-//     shadowRadius: 4,
-//     elevation: 2,
-//   },
-//   avatarContainer: {
-//     position: 'relative',
-//     marginRight: 16,
-//   },
-//   avatar: {
-//     width: 48,
-//     height: 48,
-//     borderRadius: 24,
-//   },
-//   typeIcon: {
-//     position: 'absolute',
-//     bottom: -4,
-//     right: -4,
-//     backgroundColor: '#fff',
-//     borderRadius: 12,
-//     padding: 4,
-//   },
-//   transferDetails: {
-//     flex: 1,
-//   },
-//   transferHeader: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     marginBottom: 6,
-//   },
-//   name: {
-//     fontSize: 16,
-//     fontWeight: '600',
-//     color: '#2c3e50',
-//   },
-//   amount: {
-//     fontSize: 16,
-//     fontWeight: '700',
-//     color: '#2c3e50',
-//   },
-//   transferMeta: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     marginBottom: 8,
-//   },
-//   date: {
-//     fontSize: 13,
-//     color: '#7f8c8d',
-//   },
-//   statusBadge: {
-//     paddingHorizontal: 8,
-//     paddingVertical: 4,
-//     borderRadius: 12,
-//   },
-//   statusText: {
-//     fontSize: 12,
-//     color: '#fff',
-//     fontWeight: '500',
-//   },
-//   typeText: {
-//     fontSize: 13,
-//     color: '#7f8c8d',
-//   },
-//   collectButton: {
-//     backgroundColor: '#3498db',
-//     width: 36,
-//     height: 36,
-//     borderRadius: 18,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginLeft: 12,
-//   },
-// });
-
-// export default RecentTransactions;
-
-import { FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  Image,
-  RefreshControl,
   SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import { useUser } from '../../context/UserContext';
 import { TransactionService } from '../../services/apiClient';
 
-const RecentTransactions = () => {
+export default function RecentTransactions() {
   const router = useRouter();
-  const [transactions, setTransactions] = useState([]);
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const fetchRecentTransactions = async () => {
-    try {
-      const response = await TransactionService.getRecentTransaction();
-      const formattedTransactions = response.map(tx => ({
-        id: tx.Id,
-        name: tx.RecipientName || 'Unknown Recipient',
-        date: new Date(tx.CreatedAt).toLocaleDateString('en-US', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        type: tx.Service || 'Transfer',
-        status: tx.Status,
-        amount: tx.TotalAmount.toFixed(2),
-        currency: tx.SendCurrency,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(tx.RecipientName || 'U')}&background=random`
-      }));
-      setTransactions(formattedTransactions);
-    } catch (error) {
-      console.error('Failed to fetch transactions:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
 
   useEffect(() => {
-    fetchRecentTransactions();
+    const warmRecentTransactions = async () => {
+      try {
+        await TransactionService.getRecentTransaction('');
+      } catch (error) {
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    warmRecentTransactions();
   }, []);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchRecentTransactions();
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Completed':
-      case 'Paid':
-        return '#27ae60';
-      case 'Failed':
-        return '#e74c3c';
-      case 'Pending':
-        return '#f39c12';
-      default:
-        return '#7f8c8d';
-    }
-  };
-
-  const getServiceIcon = (serviceType) => {
-    switch (serviceType) {
-      case 'MobileWallet':
-      case 'Mobile Money':
-        return <FontAwesome name="mobile" size={18} color="#3498db" />;
-      case 'Cash Collection':
-        return <MaterialIcons name="attach-money" size={18} color="#27ae60" />;
-      default:
-        return <Ionicons name="send" size={18} color="#9b59b6" />;
-    }
-  };
-
-  const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.transferItem}>
-      <View style={styles.avatarContainer}>
-        <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      </View>
-      
-      <View style={styles.transferDetails}>
-        <View style={styles.transferHeader}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.amount}>{`${item.amount} ${item.currency}`}</Text>
-        </View>
-        
-        <View style={styles.transferMeta}>
-          <View style={styles.serviceContainer}>
-            {getServiceIcon(item.type)}
-            <Text style={styles.typeText}>{item.type}</Text>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-            <Text style={styles.statusText}>{item.status}</Text>
-          </View>
-        </View>
-        
-        <Text style={styles.date}>{item.date}</Text>
-      </View>
-      
-      {item.status === 'Pending' && (
-        <TouchableOpacity 
-          style={styles.collectButton}
-          onPress={() => router.push(`/transaction/${item.id}`)}
-        >
-          <Ionicons name="refresh" size={18} color="#fff" />
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
-  );
-
-  if (loading && transactions.length === 0) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3498db" />
-      </View>
-    );
-  }
+  const userName = user?.firstName || 'Ali';
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Recent Transfers</Text>
-          <TouchableOpacity>
-            <Text style={styles.headerAction}>Filter</Text>
-          </TouchableOpacity>
-        </View>
-
-        <FlatList
-          data={transactions}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor="#3498db"
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No recent transactions found</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.profileBlock}>
+            <View style={styles.profileIconWrap}>
+              <Ionicons name="person-outline" size={16} color="#7E8794" />
             </View>
-          }
-        />
-        
-        <View style={styles.announcement}>
-          <Text style={styles.announcementText}>
-            <Text style={styles.announcementBold}>Important:</Text> We are regulated by the{' '}
-            <Text style={styles.announcementBold}>Swedish Financial Supervisory Authority</Text> with institution number{' '}
-            <Text style={styles.announcementBold}>45577</Text>.
+            <View>
+              <Text style={styles.welcomeText}>Welcome</Text>
+              <Text style={styles.nameText}>{userName}!!</Text>
+            </View>
+          </View>
+
+          <Text style={styles.brandText}>
+            <Text style={styles.brandBlue}>Pay</Text>
+            <Text style={styles.brandGold}>Sii</Text>
           </Text>
         </View>
-      </View>
 
-      <View style={styles.navBar}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="call-outline" size={24} color="#6b7280" />
-          <Text style={styles.navText}>Contact Us</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => router.push('/remittance/RemittanceTypeScreen')}
-        >
-          <View style={styles.navActive}>
-            <Ionicons name="send" size={24} color="#2b6cb0" />
+        <View style={styles.divider} />
+
+        <View style={styles.content}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Recent Transfers</Text>
+            <Ionicons name="airplane-outline" size={18} color="#C6C6C6" />
           </View>
-          <Text style={[styles.navText, styles.navActiveText]}>Send Money</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => router.push('/transaction/transactionList')}
-        >
-          <MaterialIcons name="list" size={24} color="#6b7280" />
-          <Text style={styles.navText}>Transfers</Text>
-        </TouchableOpacity>
+
+          <View style={styles.emptySpace}>
+            {loading ? <ActivityIndicator color="#2F86D6" /> : null}
+          </View>
+
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.smallActionCard} activeOpacity={0.9}>
+              <Ionicons name="headset-outline" size={22} color="#818A95" />
+              <Text style={styles.smallActionText}>Contact Us</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.primaryActionCard}
+              onPress={() => router.push('/remittance/RemittanceTypeScreen')}
+              activeOpacity={0.9}
+            >
+              <Ionicons name="paper-plane" size={20} color="#52626D" />
+              <Text style={styles.primaryActionText}>Send Money</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.smallActionCard}
+              onPress={() => router.push('/transaction/transactionList')}
+              activeOpacity={0.9}
+            >
+              <Ionicons name="list-outline" size={22} color="#818A95" />
+              <Text style={styles.smallActionText}>Transfers</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.bottomDock}>
+          <TouchableOpacity style={[styles.dockButton, styles.dockButtonActive]} activeOpacity={0.9}>
+            <Ionicons name="home-outline" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.dockButton}
+            onPress={() => router.push('/remittance/RemittanceTypeScreen')}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="airplane-outline" size={20} color="#7F8792" />
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 80, // Space for navbar
+    backgroundColor: '#FFFFFF',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#7f8c8d',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a365d',
-  },
-  headerAction: {
-    fontSize: 16,
-    color: '#3182ce',
-    fontWeight: '500',
-  },
-  listContent: {
-    paddingBottom: 16,
-  },
-  transferItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#edf2f7',
-  },
-  avatarContainer: {
-    marginRight: 16,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e2e8f0',
-  },
-  transferDetails: {
-    flex: 1,
-  },
-  transferHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2d3748',
-    flex: 1,
-    marginRight: 8,
-  },
-  amount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2d3748',
-  },
-  transferMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  serviceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  typeText: {
-    fontSize: 14,
-    color: '#4a5568',
-    marginLeft: 6,
-  },
-  date: {
-    fontSize: 13,
-    color: '#718096',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  collectButton: {
-    backgroundColor: '#3182ce',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  announcement: {
-    backgroundColor: '#ebf8ff',
-    padding: 16,
-    borderRadius: 8,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#bee3f8',
-  },
-  announcementText: {
-    color: '#2b6cb0',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  announcementBold: {
-    fontWeight: '600',
-  },
-  navBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    backgroundColor: '#fff',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  navItem: {
-    alignItems: 'center',
+  headerRow: {
+    minHeight: 60,
     paddingHorizontal: 12,
+    paddingTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  navActive: {
-    backgroundColor: '#ebf8ff',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  profileBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  profileIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D8DCE2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
-  navText: {
-    fontSize: 12,
-    color: '#718096',
-    marginTop: 4,
+  welcomeText: {
+    fontSize: 10,
+    color: '#7C7F86',
+    lineHeight: 12,
   },
-  navActiveText: {
-    color: '#3182ce',
+  nameText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111111',
+    lineHeight: 18,
+  },
+  brandText: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  brandBlue: {
+    color: '#1677C9',
+  },
+  brandGold: {
+    color: '#E2B13C',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F1F1',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    fontSize: 13,
+    color: '#2B2B2B',
     fontWeight: '500',
+  },
+  emptySpace: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+  },
+  smallActionCard: {
+    width: 78,
+    height: 78,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  primaryActionCard: {
+    width: 72,
+    height: 82,
+    borderRadius: 14,
+    backgroundColor: '#C9F0F4',
+    borderWidth: 1.5,
+    borderColor: '#3A8FD5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  smallActionText: {
+    fontSize: 10,
+    color: '#4D5560',
+  },
+  primaryActionText: {
+    fontSize: 9,
+    color: '#4D5560',
+  },
+  bottomDock: {
+    height: 72,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: '#F7F7F7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 58,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  dockButton: {
+    width: 52,
+    height: 28,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dockButtonActive: {
+    backgroundColor: '#2D8ADD',
   },
 });
-
-export default RecentTransactions;

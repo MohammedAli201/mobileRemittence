@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { generateFingerprint } from './deviceFingerprint';
 
 const FINGERPRINT_KEY = 'device_fingerprint_v1';
 

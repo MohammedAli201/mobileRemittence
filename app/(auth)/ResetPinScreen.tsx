@@ -1,17 +1,24 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  View,
 } from 'react-native';
+import {
+  FintechHeroCard,
+  FintechInlineMessage,
+  FintechPrimaryButton,
+  FintechScreenHeader,
+  FintechSecondaryButton,
+  FintechStatusPill,
+  FintechTextField,
+  fintechColors,
+} from '../../components/ui/fintech';
+import { useUser } from '../../context/UserContext';
 import { AuthHelpers } from '../../services/AuthHelpers';
 
 export default function ResetPinScreen() {
@@ -19,22 +26,34 @@ export default function ResetPinScreen() {
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [secureText, setSecureText] = useState(true);
   const router = useRouter();
+  const { user } = useUser();
 
   const handleReset = async () => {
-    if (!password.trim()) return Alert.alert('Error', 'Please enter your password');
-    if (newPin.length !== 4 || confirmPin.length !== 4) return Alert.alert('Error', 'PIN must be exactly 4 digits');
-    if (newPin !== confirmPin) return Alert.alert('Error', 'PINs do not match');
+    if (!password.trim()) {
+      Alert.alert('Missing password', 'Enter your password to continue.');
+      return;
+    }
+
+    if (newPin.length !== 4 || confirmPin.length !== 4) {
+      Alert.alert('Invalid PIN', 'PIN must be exactly 4 digits.');
+      return;
+    }
+
+    if (newPin !== confirmPin) {
+      Alert.alert('PIN mismatch', 'PINs do not match.');
+      return;
+    }
 
     setIsLoading(true);
     try {
-      const userId = await AuthHelpers.verifyCredentialsForPinReset('', password);
+      const userId = await AuthHelpers.verifyCredentialsForPinReset(user?.email || '', password);
       await AuthHelpers.completePinReset(userId, newPin);
-      Alert.alert('Success', 'Your PIN has been changed successfully');
-      router.back();
+      Alert.alert('PIN updated', 'Your quick login PIN has been changed.', [
+        { text: 'Continue', onPress: () => router.back() },
+      ]);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to reset PIN. Please try again.');
+      Alert.alert('Reset failed', error.message || 'Failed to reset PIN. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -42,192 +61,93 @@ export default function ResetPinScreen() {
 
   const handleLogout = async () => {
     await AuthHelpers.clearPin();
-    router.replace('/login');
+    router.replace('/(auth)/login');
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.inner}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Reset Your PIN</Text>
-          <Text style={styles.subtitle}>For security, please enter your password and new PIN</Text>
-        </View>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+      >
+        <View style={styles.container}>
+          <FintechScreenHeader
+            eyebrow="Reset PIN"
+            title="Create a new PIN"
+            subtitle="Verify with your password first."
+            right={<FintechStatusPill icon="shield-checkmark-outline" label="Secure reset" tone="info" />}
+          />
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Current Password</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#9ca3af"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>New 4-digit PIN</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter new PIN"
-              placeholderTextColor="#9ca3af"
-              keyboardType="numeric"
-              maxLength={4}
-              secureTextEntry={secureText}
-              value={newPin}
-              onChangeText={setNewPin}
-            />
-            <TouchableOpacity 
-              onPress={() => setSecureText(!secureText)} 
-              style={styles.eyeIcon}
-              accessibilityLabel={secureText ? 'Show PIN' : 'Hide PIN'}
-            >
-              <MaterialIcons 
-                name={secureText ? 'visibility-off' : 'visibility'} 
-                size={22} 
-                color="#6b7280" 
+          <FintechHeroCard
+            title="Keep access protected"
+            subtitle="A new PIN replaces the existing quick login code on this device."
+          >
+            <View style={styles.form}>
+              <FintechTextField
+                label="Password"
+                icon="lock-closed-outline"
+                placeholder="Current password"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
               />
-            </TouchableOpacity>
+              <FintechTextField
+                label="New PIN"
+                icon="keypad-outline"
+                placeholder="4 digits"
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={4}
+                value={newPin}
+                onChangeText={(value) => setNewPin(value.replace(/\D/g, ''))}
+              />
+              <FintechTextField
+                label="Confirm PIN"
+                icon="shield-outline"
+                placeholder="Repeat PIN"
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={4}
+                value={confirmPin}
+                onChangeText={(value) => setConfirmPin(value.replace(/\D/g, ''))}
+              />
+            </View>
+          </FintechHeroCard>
+
+          <FintechInlineMessage
+            text="If you no longer remember your password, sign out and log back in before creating a new PIN."
+          />
+
+          <View style={styles.actions}>
+            <FintechPrimaryButton onPress={handleReset} loading={isLoading} disabled={isLoading}>
+              Save new PIN
+            </FintechPrimaryButton>
+            <FintechSecondaryButton label="Sign out instead" onPress={handleLogout} />
           </View>
         </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Confirm 4-digit PIN</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm new PIN"
-              placeholderTextColor="#9ca3af"
-              keyboardType="numeric"
-              maxLength={4}
-              secureTextEntry={secureText}
-              value={confirmPin}
-              onChangeText={setConfirmPin}
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, isLoading && styles.disabledButton]}
-          onPress={handleReset}
-          disabled={isLoading}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Save New PIN</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.logoutButton} 
-          onPress={handleLogout}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.logoutText}>Forgot password? Sign out</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#f8fafc' 
+  safeArea: {
+    flex: 1,
+    backgroundColor: fintechColors.background,
   },
-  inner: { 
-    flex: 1, 
-    padding: 24, 
-    justifyContent: 'center' 
+  flex: {
+    flex: 1,
   },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
+  container: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 24,
+    gap: 18,
   },
-  title: { 
-    fontSize: 24, 
-    fontWeight: '600', 
-    color: '#1e293b',
-    marginBottom: 8,
+  form: {
+    gap: 14,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#334155',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-    elevation: 1,
-  },
-  input: { 
-    flex: 1, 
-    height: 50, 
-    fontSize: 16,
-    color: '#1e293b',
-  },
-  eyeIcon: { 
-    padding: 8,
-    marginLeft: 4,
-  },
-  button: {
-    backgroundColor: '#3b82f6',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 24,
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  disabledButton: { 
-    opacity: 0.7,
-  },
-  buttonText: { 
-    color: 'white', 
-    fontWeight: '600', 
-    fontSize: 16,
-  },
-  logoutButton: { 
-    marginTop: 24, 
-    alignItems: 'center',
-    padding: 12,
-  },
-  logoutText: { 
-    color: '#ef4444', 
-    fontWeight: '500',
-    fontSize: 14,
+  actions: {
+    gap: 10,
   },
 });

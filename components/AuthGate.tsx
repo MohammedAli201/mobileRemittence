@@ -1,9 +1,16 @@
 // components/AuthGate.tsx
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AuthService from '../services/AuthHelpers';
 
-const AuthGate = ({ children, navigation }) => {
+type AuthGateProps = {
+  children?: React.ReactNode;
+  navigation: {
+    replace: (route: string) => void;
+  };
+};
+
+const AuthGate = ({ children, navigation }: AuthGateProps) => {
   const [authMethod, setAuthMethod] = useState<'biometric' | 'pin' | null>(null);
   const [loading, setLoading] = useState(true);
   const [pinAttempt, setPinAttempt] = useState('');
@@ -11,7 +18,10 @@ const AuthGate = ({ children, navigation }) => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { biometric, pin } = await AuthService.getAuthTypes();
+      const [biometric, pin] = await Promise.all([
+        AuthService.isBiometricAvailable(),
+        AuthService.pinExists(),
+      ]);
       
       if (biometric) {
         setAuthMethod('biometric');
@@ -106,6 +116,7 @@ const AuthGate = ({ children, navigation }) => {
           </TouchableOpacity>
         </>
       )}
+      {children}
     </View>
   );
 };

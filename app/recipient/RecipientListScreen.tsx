@@ -1,282 +1,271 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { useTransaction } from '../../context/TransactionContext';
-
+import { useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  FlatList,
-  Platform,
   SafeAreaView,
-  StatusBar,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View
-} from 'react-native';
-import { RecipientService } from '../../services/apiClient';
+  View,
+} from "react-native";
+import {
+  FintechEmptyState,
+  FintechPrimaryButton,
+  FintechProgress,
+  FintechSecondaryButton,
+  FintechStatusPill,
+  FintechTextField,
+  fintechColors,
+} from "../../components/ui/fintech";
+import { RecipientService } from "../../services/apiClient";
+import {
+  createRecipientProfile,
+  getCountryNameFromCode,
+  normalizeCountryCode,
+  RecipientProfile,
+} from "../../services/remittance";
+import { getTransferDraft, mergeTransferDraft } from "../../services/transferDraft";
 
-interface Recipient {
+type RecipientResponse = {
   Id: string;
   PhoneNumber: string;
   FirstName: string;
   LastName: string;
   Service: string;
-  Provider: string;
-  RelationshipToSender: string;
+  Provider?: string;
+  RelationshipToSender?: string;
   ReceivingCountry?: string;
   CountryOfCitizenship?: string;
   Address?: string;
   City?: string;
-}
+};
+
+type RecipientListResponse = {
+  Success?: boolean;
+  Data?: RecipientResponse[];
+  Error?: string | null;
+};
+
+const getAvatarColor = (id: string) => {
+  const colors = ["#0F766E", "#1D4ED8", "#B45309", "#7C3AED", "#BE185D"];
+  const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+};
+
+const mapApiRecipientToProfile = (item: RecipientResponse): RecipientProfile =>
+  createRecipientProfile({
+    id: item.Id,
+    firstName: item.FirstName,
+    lastName: item.LastName,
+    phoneNumber: item.PhoneNumber,
+    receivingCountry: item.ReceivingCountry || "SO",
+    countryOfCitizenship: item.CountryOfCitizenship || item.ReceivingCountry || "SO",
+    address: item.Address || "",
+    city: item.City || "",
+    provider: item.Provider || "",
+    service: item.Service === "MobileWallet" ? "MobileMoney" : (item.Service as RecipientProfile["service"]),
+    relationshipToSender: item.RelationshipToSender || "",
+  });
 
 export default function RecipientListScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
-  const [recipients, setRecipients] = useState<Recipient[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const transactionData = getTransferDraft();
+  const [recipients, setRecipients] = useState<RecipientProfile[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { transactionData, updateTransaction } = useTransaction();
+  const [error, setError] = useState("");
+
+  const selectedCountry = normalizeCountryCode(transactionData.receivingCountry || "SO");
 
   useEffect(() => {
-    fetchRecipients();
-  }, []);
-const fetchRecipients = async () => {
-  try {
-    setLoading(true);
-    const response = await RecipientService.getAllRecipients();
+    const fetchRecipients = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const response = (await RecipientService.getAllRecipients()) as RecipientListResponse | RecipientResponse[];
+        const rows = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.Data)
+            ? response.Data
+            : Array.isArray(response?.data)
+              ? response.data
+              : null;
 
-    if (!response?.Success) {
-      throw new Error('Failed to fetch recipients: Invalid response');
-    }
-
-    if (!Array.isArray(response.Data)) {
-      throw new Error('Failed to fetch recipients: Invalid data format');
-    }
-
-    const selectedCountry = transactionData.receivingCountry;
-    
-    if (!selectedCountry) {
-      throw new Error('No receiving country selected');
-    }
-
-    // Normalize country names for case-insensitive comparison
-    const normalizeCountryName = (country: string) => country.trim().toLowerCase();
-
-    // Filter recipients by country (case-insensitive) and validate required fields
-    const filteredRecipients = response.Data
-      .filter(recipient => {
-        // Validate required fields exist
-        if (!recipient?.Id || !recipient?.FirstName || !recipient?.PhoneNumber) {
-          console.warn('Invalid recipient record skipped:', recipient);
-          return false;
+        if (!rows) {
+          throw new Error(
+            (!Array.isArray(response) && (response?.Error || "Could not load recipients.")) ||
+              "Could not load recipients.",
+          );
         }
 
-        // Clean phone number if it contains "undefined"
-        if (recipient.PhoneNumber.includes('undefined')) {
-          recipient.PhoneNumber = recipient.PhoneNumber.replace('undefined', '');
-        }
+        const nextRecipients = rows
+          .map(mapApiRecipientToProfile)
+          .filter((recipient: RecipientProfile) => recipient.receivingCountry === selectedCountry)
+          .sort((a: RecipientProfile, b: RecipientProfile) =>
+            `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
+          );
 
-        return normalizeCountryName(recipient.ReceivingCountry) === 
-               normalizeCountryName(selectedCountry);
-      })
-      .map(recipient => ({
-        ...recipient,
-        // Ensure consistent country name casing
-        ReceivingCountry: selectedCountry,
-        // Format phone number if needed
-        PhoneNumber: formatPhoneNumber(recipient.PhoneNumber),
-        // Create display name
-        displayName: `${recipient.FirstName} ${recipient.LastName}`.trim(),
-      }))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-    setRecipients(filteredRecipients);
-
-  } catch (error) {
-    console.error('Error fetching recipients:', error);
-    Alert.alert(
-      'Error',
-      error.message || 'Could not load recipient list. Please try again later.',
-      [{ text: 'OK' }]
-    );
-    setRecipients([]);
-  } finally {
-    setLoading(false);
-  }
-};
-const formatPhoneNumber = (phone: string) => {
-  // Remove all non-digit characters
-  const cleaned = phone.replace(/\D/g, '');
-  
-  // Format based on country - this is a simple example
-  if (cleaned.startsWith('252')) { // Somalia
-    return `+${cleaned}`;
-  } else if (cleaned.startsWith('254')) { // Kenya
-    return `+${cleaned}`;
-  }
-  return cleaned.length > 0 ? `+${cleaned}` : 'Invalid number';
-};
-  // const fetchRecipients = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const response = await RecipientService.getAllRecipients();
-
-  //     if (response.Success && response.Data) {
-  //       // before using recipeint data, we need to filter based on country
-  //       const selectCountry = transactionData.receivingCountry
-  //       const recipeintFilter = response.Data.filter(data=>data.receivingCountry==selectCountry)
-  //       setRecipients(response.Data);
-  //     } else {
-  //       setError('No recipients found');
-  //     }
-  //   } catch (err) {
-  //     setError('Failed to load recipients');
-  //     console.error(err);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-  const filteredRecipients = recipients.filter(recipient =>
-    `${recipient.FirstName} ${recipient.LastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    recipient.PhoneNumber.includes(searchQuery)
-  );
-
-  const renderItem = ({ item }: { item: Recipient }) => {
-    const safeRecipient = {
-      id: item?.Id || 'unknown-id',
-      name: `${item?.FirstName || ''} ${item?.LastName || ''}`.trim() || 'Unknown Recipient',
-      phone: item?.PhoneNumber || 'N/A',
-      service: item?.Service || 'MobileWallet',
-      provider: item?.Provider || 'Unknown Provider',
-      relationship: item?.RelationshipToSender || 'Not specified'
+        setRecipients(nextRecipients);
+      } catch (fetchError: any) {
+        setRecipients([]);
+        setError(fetchError?.message || "Could not load recipient list.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    return (
-      <TouchableOpacity
-        style={styles.recipientItem}
-        onPress={() => {
-          router.push({
-            pathname: '/transaction/AgreeAndPayScreen',
-            params: {
-              recipient: JSON.stringify(safeRecipient),
-            },
-          });
-        }}
-      >
-        <View style={[styles.avatar, { backgroundColor: generateAvatarColor(safeRecipient.id) }]}>
-          <Text style={styles.avatarText}>
-            {safeRecipient.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-          </Text>
-        </View>
-        <View style={styles.recipientInfo}>
-          <Text style={styles.name} numberOfLines={1}>
-            {safeRecipient.name}
-          </Text>
-          <View style={styles.detailsRow}>
-            <Text style={styles.phone} numberOfLines={1}>
-              {safeRecipient.phone}
-            </Text>
-            <View style={styles.dotSeparator} />
-            <Text style={styles.provider} numberOfLines={1}>
-              {safeRecipient.provider}
-            </Text>
-          </View>
-          <Text style={styles.relationship} numberOfLines={1}>
-            {safeRecipient.relationship}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color="#CBD5E0" />
-      </TouchableOpacity>
-    );
-  };
+    void fetchRecipients();
+  }, [selectedCountry]);
 
-  const generateAvatarColor = (id: string) => {
-    const colors = [
-      '#4CAF50', '#2196F3', '#FF5722', 
-      '#9C27B0', '#607D8B', '#795548',
-      '#E91E63', '#00BCD4'
-    ];
-    const hash = id.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
-    return colors[hash % colors.length];
+  const filteredRecipients = useMemo(
+    () =>
+      recipients.filter((recipient) => {
+        const fullName = `${recipient.firstName} ${recipient.lastName}`.toLowerCase();
+        return (
+          fullName.includes(searchQuery.toLowerCase()) ||
+          recipient.phoneNumber.includes(searchQuery)
+        );
+      }),
+    [recipients, searchQuery],
+  );
+
+  const handleSelectRecipient = (recipient: RecipientProfile) => {
+    mergeTransferDraft({
+      receivingCountry: recipient.receivingCountry,
+      provider: recipient.provider || transactionData.provider || "",
+      service: recipient.service,
+      recipient: {
+        ...recipient,
+        provider: recipient.provider || transactionData.provider || "",
+        avatarColor: getAvatarColor(recipient.id || recipient.phoneNumber),
+      },
+    });
+
+    router.push({
+      pathname: "/transaction/AgreeAndPayScreen",
+      params: {
+        recipient: JSON.stringify({
+          id: recipient.id,
+          name: `${recipient.firstName} ${recipient.lastName}`,
+          phone: recipient.phoneNumber,
+          relationship: recipient.relationshipToSender,
+          provider: recipient.provider,
+          service: recipient.service,
+          countryOfCitizenship: recipient.countryOfCitizenship,
+          address: recipient.address,
+          city: recipient.city,
+        }),
+      },
+    });
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2F80ED" />
+      <SafeAreaView style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={fintechColors.primary} />
       </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity onPress={fetchRecipients} style={styles.retryButton}>
-          <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorWrap}>
+          <FintechEmptyState
+            icon="alert-circle-outline"
+            title="Recipients unavailable"
+            text={error}
+            action={
+              <FintechPrimaryButton
+                label="Back to amount"
+                onPress={() => router.replace("/transaction/SendMoneyScreen")}
+              />
+            }
+          />
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header with safe area padding */}
+      <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Select Recipient</Text>
-          <TouchableOpacity 
-            onPress={() => router.push('/recipient/AddRecipientScreen')}
-            style={styles.addButton}
-            accessibilityLabel="Add new recipient"
-          >
-            <Ionicons name="person-add-outline" size={24} color="#2F80ED" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Search bar with consistent padding */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color="#718096" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search recipients..."
-            placeholderTextColor="#A0AEC0"
+          <FintechProgress step={3} total={5} label="Step 3: Recipient" />
+          <Text style={styles.screenLabel}>Recipients</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.screenTitle}>Choose recipient</Text>
+            <FintechStatusPill label={`${filteredRecipients.length} saved`} tone="info" />
+          </View>
+          <Text style={styles.screenSubtitle}>
+            Saved recipients for {getCountryNameFromCode(selectedCountry)}.
+          </Text>
+          <FintechTextField
+            icon="search-outline"
+            placeholder="Search name or phone"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            clearButtonMode="while-editing"
-            accessibilityLabel="Search recipients"
           />
         </View>
 
-        {/* Recipient list with proper safe area handling */}
-        <FlatList
-          data={filteredRecipients}
-          keyExtractor={(item) => item.Id}
-          renderItem={renderItem}
+        <ScrollView
+          style={styles.listArea}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={48} color="#CBD5E0" />
-              <Text style={styles.emptyText}>
-                {searchQuery ? 'No matching recipients found' : 'No recipients available'}
-              </Text>
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('AddRecipient')}
-                style={styles.addNewButton}
-                accessibilityLabel="Add new recipient"
+          showsVerticalScrollIndicator={false}
+        >
+          {filteredRecipients.length ? (
+            filteredRecipients.map((recipient) => (
+              <TouchableOpacity
+                key={recipient.id || recipient.phoneNumber}
+                style={styles.recipientCard}
+                onPress={() => handleSelectRecipient(recipient)}
+                activeOpacity={0.92}
               >
-                <Text style={styles.addNewText}>Add New Recipient</Text>
+                <View
+                  style={[
+                    styles.avatarCircle,
+                    { backgroundColor: getAvatarColor(recipient.id || recipient.phoneNumber) },
+                  ]}
+                >
+                  <Text style={styles.avatarText}>
+                    {`${recipient.firstName} ${recipient.lastName}`
+                      .split(" ")
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={styles.recipientInfo}>
+                  <Text style={styles.recipientName} numberOfLines={1}>
+                    {recipient.firstName} {recipient.lastName}
+                  </Text>
+                  <Text style={styles.recipientMeta}>{recipient.phoneNumber}</Text>
+                  <Text style={styles.recipientMeta}>{recipient.relationshipToSender}</Text>
+                </View>
+
+                <View style={styles.recipientActions}>
+                  <FintechStatusPill label={recipient.provider || "Provider"} tone="neutral" />
+                </View>
               </TouchableOpacity>
-            </View>
-          }
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-        />
+            ))
+          ) : (
+            <FintechEmptyState
+              icon="people-outline"
+              title="No saved recipients"
+              text="Add a recipient for this destination to continue."
+            />
+          )}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <FintechPrimaryButton
+            label="Add new recipient"
+            onPress={() => router.push("/recipient/AddRecipientScreen")}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -286,184 +275,104 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  container: {
+  loadingScreen: {
     flex: 1,
-    backgroundColor: '#F5F7FB',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: '#FFFFFF',
   },
-  loadingContainer: {
+  content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F7FB',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F7FB',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    paddingHorizontal: 20,
+    padding: 16,
+    gap: 12,
+    backgroundColor: '#FFFFFF',
   },
   header: {
+    gap: 10,
+    marginBottom: 8,
+  },
+  screenLabel: {
+    marginTop: 18,
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  headerRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EDF2F7',
+    gap: 12,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#2D3748',
-    letterSpacing: 0.5,
-  },
-  addButton: {
-    backgroundColor: '#EBF4FF',
-    borderRadius: 20,
-    padding: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    marginHorizontal: 20,
-    marginVertical: 12,
-    paddingHorizontal: 16,
-    height: 50,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
+  screenTitle: {
     flex: 1,
-    height: '100%',
-    color: '#2D3748',
-    fontSize: 16,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  screenSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  listArea: {
+    flex: 1,
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 8,
+    gap: 12,
+    paddingBottom: 16,
   },
-  recipientItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  recipientCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
   recipientInfo: {
     flex: 1,
-    marginRight: 8,
+    gap: 2,
   },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2D3748',
-    marginBottom: 4,
+  recipientName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: '#111827',
   },
-  detailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+  recipientMeta: {
+    fontSize: 13,
+    color: '#6B7280',
   },
-  phone: {
-    fontSize: 14,
-    color: '#718096',
+  recipientActions: {
+    alignItems: "flex-end",
+    gap: 10,
   },
-  dotSeparator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#CBD5E0',
-    marginHorizontal: 8,
+  footer: {
+    paddingTop: 4,
+    paddingBottom: 4,
+    backgroundColor: '#FFFFFF',
   },
-  provider: {
-    fontSize: 14,
-    color: '#718096',
-  },
-  relationship: {
-    fontSize: 12,
-    color: '#A0AEC0',
-    fontStyle: 'italic',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#718096',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  addNewButton: {
-    backgroundColor: '#2F80ED',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  addNewText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#E53E3E',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 24,
-  },
-  retryButton: {
-    backgroundColor: '#2F80ED',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignSelf: 'center',
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
+  errorWrap: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
   },
 });

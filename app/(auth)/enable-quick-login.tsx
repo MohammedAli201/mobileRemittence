@@ -1,47 +1,87 @@
-
-
-// app/(auth)/enable-quick-login.tsx
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
+import {
+  FintechChoiceCard,
+  FintechHeroCard,
+  FintechPrimaryButton,
+  FintechScreenHeader,
+  FintechStatusPill,
+  FintechTrustRow,
+  fintechColors,
+} from '../../components/ui/fintech';
+
+type QuickLoginMethod = 'pin' | 'biometric';
 
 export default function EnableQuickLoginScreen() {
   const router = useRouter();
+  const [selectedMethod, setSelectedMethod] = useState<QuickLoginMethod>('pin');
+
+  const handleContinue = () => {
+    router.replace({
+      pathname: '/(auth)/setup-pin',
+      params: { preferred: selectedMethod },
+    });
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Enable Quick Login?</Text>
-      <Text style={styles.subtitle}>
-        Use PIN or fingerprint to access your account faster next time.
-      </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <FintechScreenHeader
+          eyebrow="Quick Login"
+          title="Set up faster access"
+          subtitle="Choose your preferred unlock method for future sessions."
+          right={<FintechStatusPill icon="time-outline" label="30 sec setup" tone="info" />}
+        />
 
-      <TouchableOpacity style={styles.button} onPress={() => router.replace('/(auth)/setup-pin')}>
-        <Text style={styles.buttonText}>Yes, Set It Up</Text>
-      </TouchableOpacity>
+        <FintechHeroCard
+          title="Keep repeat sign-ins simple"
+          subtitle="You will still confirm transfers and payments before money moves."
+        >
+          <View style={styles.options}>
+            <FintechChoiceCard
+              icon="keypad-outline"
+              title="PIN only"
+              subtitle="Reliable on every device."
+              selected={selectedMethod === 'pin'}
+              onPress={() => setSelectedMethod('pin')}
+            />
+            <FintechChoiceCard
+              icon="finger-print-outline"
+              title="Biometric + PIN"
+              subtitle="Fastest unlock with PIN backup."
+              selected={selectedMethod === 'biometric'}
+              onPress={() => setSelectedMethod('biometric')}
+            />
+          </View>
+        </FintechHeroCard>
 
-      <TouchableOpacity
-        style={[styles.button, styles.skipButton]}
-        onPress={() => router.replace('/transaction/RecentTransactions')}
-      >
-        <Text style={styles.buttonText}>No, Skip for Now</Text>
-      </TouchableOpacity>
-    </View>
+        <FintechTrustRow
+          icon="shield-checkmark-outline"
+          title="Built for safe repeat access"
+          text="This only affects device login. Sensitive transfer actions still require standard review."
+        />
+
+        <FintechPrimaryButton onPress={handleContinue}>
+          Continue
+        </FintechPrimaryButton>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  subtitle: { fontSize: 16, color: '#555', marginBottom: 24, textAlign: 'center' },
-  button: {
-    backgroundColor: '#4f46e5',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 16,
-    alignItems: 'center',
+  safeArea: {
+    flex: 1,
+    backgroundColor: fintechColors.background,
   },
-  skipButton: {
-    backgroundColor: '#9ca3af',
+  container: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 24,
+    gap: 18,
   },
-  buttonText: { color: 'white', fontSize: 16 },
+  options: {
+    gap: 12,
+  },
 });

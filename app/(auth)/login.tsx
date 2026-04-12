@@ -1,112 +1,93 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  SafeAreaView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import FingerprintScreen from '../../components/FingerprintScreen';
+import {
+  FintechHeroCard,
+  FintechInlineMessage,
+  FintechPrimaryButton,
+  FintechScreenHeader,
+  FintechStatusPill,
+  FintechTextField,
+  FintechTrustRow,
+  fintechColors,
+} from '../../components/ui/fintech';
 import { useUser } from '../../context/UserContext';
-import AuthService from '../../services/AuthHelpers';
+import AuthHelpers from '../../services/AuthHelpers';
 
 export default function Login() {
-  const [visitorId, setVisitorId] = useState<string | null>(null);
   const router = useRouter();
-  const { login } = useUser();
+  const { login, isLoading: authLoading } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [secureEntry, setSecureEntry] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Monitor visitorId changes
-  useEffect(() => {
-          console.log('Visitor ID obtained:', visitorId);
-
-    if (visitorId) {
-      console.log('Visitor ID obtained:', visitorId);
-    }
-  }, [visitorId]);
-
-  // Check auth status
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const pinExists = await AuthService.pinExists();
+        const pinExists = await AuthHelpers.pinExists();
         if (pinExists) {
-          router.replace('/(auth)/authenticate');
-        return;
+          router.replace('/(auth)/pin-entry');
+          return;
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
+      } catch {
       } finally {
         setCheckingAuth(false);
       }
     };
 
     checkAuthStatus();
-  }, []);
+  }, [router]);
 
   const handleLogin = async () => {
     const trimmedEmail = email.trim();
-    console.log('Using visitor ID:', visitorId);
 
     if (!trimmedEmail || !password) {
-      Alert.alert('Missing Fields', 'Please enter both email and password.');
+      Alert.alert('Missing details', 'Enter your email and password to continue.');
       return;
     }
 
     if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      Alert.alert('Invalid email', 'Enter a valid email address.');
       return;
     }
 
     setLoading(true);
     try {
-      // Pass visitorId to your login function
-      console.log("visitors ", visitorId)
-      await login(trimmedEmail, password);
-      
-      const pinExists = await AuthService.pinExists();
-      if (pinExists) {
-        router.replace('/(auth)/authenticate');
-      } else {
+      const signedInUser = await login(trimmedEmail, password);
+
+      if (signedInUser.stepUpVerificationRequired || !signedInUser.isTrustedDevice) {
         router.replace('/(auth)/enable-quick-login');
+      } else {
+        router.replace('/transaction/RecentTransactions');
       }
     } catch (error: any) {
-      console.error('Login error:', error);
-      if (error?.response?.status === 401) {
-        Alert.alert(
-          'Authentication Failed',
-          'Invalid email or password. Please try again.',
-          [{ text: 'OK', onPress: () => setPassword('') }]
-        );
-      } else {
-        const errorMessage = error?.response?.data?.message || 
-                         error?.message || 
-                         'Login failed. Please try again later.';
-        Alert.alert('Login Failed', errorMessage);
-      }
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Sign in failed. Please try again.';
+      Alert.alert('Sign in failed', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  if (checkingAuth) {
+  if (checkingAuth || authLoading) {
     return (
-      <SafeAreaView style={styles.splashContainer}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+      <SafeAreaView style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={fintechColors.primary} />
       </SafeAreaView>
     );
   }
@@ -114,96 +95,75 @@ export default function Login() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
       >
-        {/* Hidden fingerprint component */}
-        <FingerprintScreen onVisitorId={setVisitorId} />
+        <View style={styles.container}>
+          <FintechScreenHeader
+            eyebrow="Secure Sign In"
+            title="Welcome back"
+            subtitle="Fast sign in, clear costs, secure transfers."
+            right={<FintechStatusPill icon="shield-checkmark-outline" label="Protected" tone="info" />}
+          />
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.container}>
-            <Image
-              source={require('../../assets/images/favicon.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue</Text>
-
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="email" size={20} color="#6b7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email address"
-                placeholderTextColor="#9ca3af"
+          <FintechHeroCard
+            title="Access your account"
+            subtitle="Use your email and password. Quick login can be enabled right after sign-in."
+          >
+            <View style={styles.form}>
+              <FintechTextField
+                label="Email"
+                icon="mail-outline"
+                placeholder="you@example.com"
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoCorrect={false}
-                onChangeText={setEmail}
                 value={email}
+                onChangeText={setEmail}
               />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="lock" size={20} color="#6b7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#9ca3af"
+              <FintechTextField
+                label="Password"
+                icon="lock-closed-outline"
+                placeholder="Enter password"
                 secureTextEntry={secureEntry}
-                onChangeText={setPassword}
                 value={password}
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setSecureEntry(!secureEntry)}
-              >
-                <MaterialIcons
-                  name={secureEntry ? 'visibility-off' : 'visibility'}
-                  size={20}
-                  color="#6b7280"
-                />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => router.push('/forgot-password')}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#4f46e5', '#7c3aed']}
-                style={[styles.button, loading && styles.disabledButton]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Sign In</Text>
+                onChangeText={setPassword}
+                right={(
+                  <TouchableOpacity onPress={() => setSecureEntry((prev) => !prev)}>
+                    <Ionicons
+                      name={secureEntry ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color="#64748B"
+                    />
+                  </TouchableOpacity>
                 )}
-              </LinearGradient>
+              />
+            </View>
+          </FintechHeroCard>
+
+          <FintechInlineMessage
+            text="You will review the exchange rate, fees, and recipient amount before any payment is taken."
+          />
+
+          <View style={styles.footer}>
+            <FintechPrimaryButton onPress={handleLogin} loading={loading} disabled={loading}>
+              <Text style={styles.primaryText}>Sign in</Text>
+            </FintechPrimaryButton>
+
+            <TouchableOpacity style={styles.registerRow} onPress={() => router.push('/(auth)/register')} activeOpacity={0.8}>
+              <Text style={styles.registerLabel}>New here?</Text>
+              <Text style={styles.registerLink}>Create account</Text>
             </TouchableOpacity>
 
-            <View style={styles.signUpContainer}>
-              <Text style={styles.signUpText}>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/register')}>
-                <Text style={styles.signUpLink}> Sign Up</Text>
-              </TouchableOpacity>
+            <View style={styles.trustBlock}>
+              <FintechTrustRow
+                icon="finger-print-outline"
+                title="Quick unlock available"
+                text="PIN and biometrics can be added after your first secure sign-in."
+              />
             </View>
           </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -212,108 +172,50 @@ export default function Login() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: fintechColors.background,
   },
-  splashContainer: {
+  loadingScreen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff'
+    backgroundColor: fintechColors.background,
   },
-  keyboardAvoidingView: {
+  flex: {
     flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
   },
   container: {
     flex: 1,
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 20,
+    paddingVertical: 24,
+    gap: 16,
   },
-  logo: {
-    width: 80,
-    height: 80,
-    alignSelf: 'center',
-    marginBottom: 24,
+  form: {
+    gap: 14,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 8,
+  footer: {
+    gap: 16,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 32,
+  trustBlock: {
+    paddingHorizontal: 4,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    height: 56,
-    color: '#111827',
-    fontSize: 16,
-  },
-  eyeIcon: {
-    padding: 8,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: '#4f46e5',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  button: {
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#4f46e5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  signUpContainer: {
+  registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 12,
+    gap: 6,
   },
-  signUpText: {
-    color: '#6b7280',
+  registerLabel: {
     fontSize: 14,
+    color: fintechColors.textMuted,
   },
-  signUpLink: {
-    color: '#4f46e5',
+  registerLink: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: fintechColors.primary,
+  },
+  primaryText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

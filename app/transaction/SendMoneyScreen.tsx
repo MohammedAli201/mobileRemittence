@@ -1,1364 +1,625 @@
-// import React, { useEffect, useMemo, useState } from 'react';
-// import { useTransaction } from '../../context/TransactionContext';
-
-// import { useRouter } from 'expo-router';
-// import {
-//   ActivityIndicator,
-//   Alert,
-//   Image,
-//   SafeAreaView,
-//   StyleSheet,
-//   Switch,
-//   Text,
-//   TextInput,
-//   TouchableOpacity,
-//   View,
-// } from 'react-native';
-
-// import { TransactionService } from '../../services/apiClient';
-// import currencyMap from '../CountryCurrencyCode.json';
-// import flagCodes from '../CountryFlagCodes.json';
-// import flagMap from '../flagMap';
-
-// export default function SendMoneyScreen() {
-//   const router = useRouter();
-//   const { transactionData, updateTransaction } = useTransaction();
-
-//   const fromCountry = 'Norway';
-//   const [deliveryService, setDeliveryService] = useState('Somalia.EVC');
-//   const [sendAmount, setSendAmount] = useState('');
-//   const [receiveAmount, setReceiveAmount] = useState('');
-//   const [inputMode, setInputMode] = useState('send'); // 'send' or 'receive'
-//   const [onBehalf, setOnBehalf] = useState(false);
-//   const [loading, setLoading] = useState(false);
-
-//   const [exchangeData, setExchangeData] = useState({
-//     ExchangeRate: 0,
-//     Margin: 0,
-//     EffectiveRate: 0,
-//     FixedFee: 0, // Now this will be in the sender's currency
-//     MinimumFee: 0, // Now this will be in the sender's currency
-//     ProviderName: null,
-//   });
-
-//   const deliveryCountry = deliveryService.split('.')[0];
-//   const fromCurrency = currencyMap[fromCountry] || 'NOK';
-//   const toCurrency = currencyMap[deliveryCountry] || 'USD';
-
-//   const fromFlag = flagMap[flagCodes[fromCountry]?.toLowerCase()] || flagMap['us'];
-//   const toFlag = flagMap[flagCodes[deliveryCountry]?.toLowerCase()] || flagMap['us'];
-
-//   useEffect(() => {
-//     const fetchExchangeRate = async () => {
-//       if (!fromCurrency || !toCurrency) return;
-
-//       setLoading(true);
-//       try {
-//         const data = await TransactionService.fetchExchangeRate(fromCurrency, toCurrency);
-
-//         if (!data || isNaN(Number(data.EffectiveRate))) throw new Error('Invalid API response');
-
-//         setExchangeData({
-//           ExchangeRate: Number(data.ExchangeRate),
-//           Margin: Number(data.Margin),
-//           EffectiveRate: Number(data.EffectiveRate),
-//           FixedFee: Number(data.FixedFee) || 2, // Default fee if not provided
-//           MinimumFee: Number(data.MinimumFee) ||, // Default minimum fee if not provided
-//           ProviderName: data.ProviderName || null,
-//         });
-
-       
-//       } catch (error) {
-//         console.warn('Exchange fetch failed:', error.message);
-//         Alert.alert('Notice', 'Could not fetch exchange rate. Default values will be used.');
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     fetchExchangeRate();
-//   }, [deliveryService]);
-
-//   const handleAmountChange = (text, field) => {
-//     // Remove any non-numeric characters except decimal point
-//     const cleanedText = text.replace(/[^0-9.]/g, '');
-    
-//     // Prevent multiple decimal points
-//     const decimalCount = cleanedText.split('.').length - 1;
-//     if (decimalCount > 1) return;
-    
-//     // Prevent negative values
-//     if (cleanedText.startsWith('-')) return;
-    
-//     if (field === 'send') {
-//       setSendAmount(cleanedText);
-//       setInputMode('send');
-//     } else {
-//       setReceiveAmount(cleanedText);
-//       setInputMode('receive');
-//     }
-//   };
-
-//   const { calculatedSendAmount, calculatedReceiveAmount, feeAmount, totalToPay } = useMemo(() => {
-//     const rate = Number(exchangeData.EffectiveRate);
-//     const exchange = Number(exchangeData.ExchangeRate);
-    
-//     let numericSendAmount = 0;
-//     let numericReceiveAmount = 0;
-    
-//     if (inputMode === 'send') {
-//       numericSendAmount = parseFloat(sendAmount) || 0;
-//       numericReceiveAmount = numericSendAmount * rate;
-//     } else {
-//       numericReceiveAmount = parseFloat(receiveAmount) || 0;
-//       numericSendAmount = numericReceiveAmount / rate;
-//     }
-    
-//     // Calculate fee: Fixed fee for every 100 units of sender's currency
-//     const feeUnits = Math.floor(numericSendAmount / 100);
-//     let calculatedFeeAmount = feeUnits * exchangeData.FixedFee;
-    
-//     // Ensure fee is not below minimum
-//     calculatedFeeAmount = Math.max(calculatedFeeAmount, exchangeData.MinimumFee);
-
-//     const calculatedTotalToPay = numericSendAmount + calculatedFeeAmount;
-
-//     return { 
-//       calculatedSendAmount: numericSendAmount,
-//       calculatedReceiveAmount: numericReceiveAmount,
-//       feeAmount: calculatedFeeAmount,
-//       totalToPay: calculatedTotalToPay
-//     };
-//   }, [sendAmount, receiveAmount, inputMode, exchangeData]);
-// useEffect(() => {
-//   updateTransaction({
-//     exchangeRate: exchangeData.ExchangeRate,
-//     fees: feeAmount,
-//     totalAmount: totalToPay,
-//     sendAmount: calculatedSendAmount,
-//     receiveAmount: calculatedReceiveAmount,
-//     sendCurrency: fromCurrency,
-//     receiveCurrency: toCurrency,
-//     sendCountry: fromCountry,
-//     receivingCountry: deliveryCountry,
-//     service: 'MobileMoney',
-//     providerName: exchangeData.ProviderName || '',
-//   });
-// }, [
-//   calculatedSendAmount,
-//   calculatedReceiveAmount,
-//   feeAmount,
-//   totalToPay,
-//   exchangeData,
-//   fromCurrency,
-//   toCurrency,
-//   fromCountry,
-//   deliveryCountry
-// ]);
-
-//   const handleSendAmountFocus = () => {
-//     setInputMode('send');
-//   };
-
-//   const handleReceiveAmountFocus = () => {
-//     setInputMode('receive');
-//   };
-
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       <Text style={styles.header}>Send Money</Text>
-
-//       {!loading && (
-//         <Text style={styles.exchangeRateText}>
-//           1 {fromCurrency} = {exchangeData.EffectiveRate.toFixed(5)} {toCurrency}
-//         </Text>
-//       )}
-
-//       {/* From Country Input */}
-//       <View style={styles.card}>
-//         <View style={styles.row}>
-//           <Image source={fromFlag} style={styles.flag} />
-//           <View>
-//             <Text style={styles.currency}>{fromCurrency}</Text>
-//             <Text style={styles.countryName}>{fromCountry}</Text>
-//           </View>
-//           <View style={{ flex: 1 }} />
-//           <View style={{ alignItems: 'flex-end' }}>
-//             <Text style={styles.hint}>You Send</Text>
-//             {loading ? (
-//               <ActivityIndicator size="small" color="#3498db" />
-//             ) : (
-//               <TextInput
-//                 value={inputMode === 'send' ? sendAmount : calculatedSendAmount.toFixed(2)}
-//                 onChangeText={(text) => handleAmountChange(text, 'send')}
-//                 onFocus={handleSendAmountFocus}
-//                 keyboardType="decimal-pad"
-//                 placeholder="0.0"
-//                 style={styles.amountInput}
-//               />
-//             )}
-//           </View>
-//         </View>
-//       </View>
-
-//       {/* Swap UI */}
-//       <View style={styles.swapWrapper}>
-//         <View style={styles.swapButton}>
-//           <Text style={styles.swapIcon}>⇅</Text>
-//         </View>
-//       </View>
-
-//       {/* To Country Display */}
-//       <View style={styles.card}>
-//         <View style={styles.row}>
-//           <Image source={toFlag} style={styles.flag} />
-//           <View>
-//             <Text style={styles.currency}>{toCurrency}</Text>
-//             <Text style={styles.countryName}>{deliveryCountry}</Text>
-//           </View>
-//           <View style={{ flex: 1 }} />
-//           <View style={{ alignItems: 'flex-end' }}>
-//             <Text style={styles.hint}>They Receive</Text>
-//             {loading ? (
-//               <ActivityIndicator size="small" color="#3498db" />
-//             ) : (
-//               <TextInput
-//                 value={inputMode === 'receive' ? receiveAmount : calculatedReceiveAmount.toFixed(2)}
-//                 onChangeText={(text) => handleAmountChange(text, 'receive')}
-//                 onFocus={handleReceiveAmountFocus}
-//                 keyboardType="decimal-pad"
-//                 placeholder="0.0"
-//                 style={styles.amountInput}
-//               />
-//             )}
-//           </View>
-//         </View>
-//       </View>
-
-//       {/* Summary */}
-//       {!loading && (
-//         <View style={styles.summarySection}>
-//           <Text style={styles.summaryHeader}>Amount Summary</Text>
-//           <Text style={styles.promotionText}>Have a promotion code?</Text>
-
-//           <View style={styles.summaryRow}>
-//             <Text style={styles.summaryLabel}>They Receive</Text>
-//             <Text style={styles.summaryValue}>{toCurrency} {calculatedReceiveAmount.toFixed(2)}</Text>
-//           </View>
-//           <View style={styles.summaryRow}>
-//             <Text style={styles.summaryLabel}>You Send</Text>
-//             <Text style={styles.summaryValue}>{fromCurrency} {calculatedSendAmount.toFixed(2)}</Text>
-//           </View>
-//           <View style={styles.summaryRow}>
-//             <Text style={styles.summaryLabel}>Fees</Text>
-//             <Text style={styles.summaryValue}>{fromCurrency} {feeAmount.toFixed(2)}</Text>
-//           </View>
-//           <View style={styles.summaryRow}>
-//             <Text style={styles.summaryLabel}>Total To Pay</Text>
-//             <Text style={styles.summaryValue}>{fromCurrency} {totalToPay.toFixed(2)}</Text>
-//           </View>
-//         </View>
-//       )}
-
-//       {/* Switch */}
-//       <View style={styles.checkboxRow}>
-//         <Switch value={onBehalf} onValueChange={setOnBehalf} />
-//         <Text style={styles.checkboxText}>
-//           I am <Text style={{ fontWeight: 'bold' }}>NOT</Text> sending on behalf of others
-//         </Text>
-//       </View>
-
-//       <TouchableOpacity
-//         style={[styles.continueBtn, (calculatedSendAmount <= 0) && { opacity: 0.5 }]}
-//         disabled={loading || calculatedSendAmount <= 0}
-//         onPress={() => {
-//           router.push("/recipient/RecipientListScreen")    
-//         }}
-//       >
-//         {loading ? (
-//           <ActivityIndicator color="#fff" />
-//         ) : (
-//           <Text style={styles.continueText}>Continue</Text>
-//         )}
-//       </TouchableOpacity>
-//     </SafeAreaView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#fff', padding: 16 },
-//   header: { fontSize: 20, fontWeight: '600', textAlign: 'center', marginBottom: 20 },
-//   exchangeRateText: { fontSize: 16, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-//   card: { backgroundColor: '#f1f1f1', borderRadius: 10, padding: 12, marginBottom: 10 },
-//   row: { flexDirection: 'row', alignItems: 'center' },
-//   flag: { width: 40, height: 30, resizeMode: 'contain', marginRight: 12 },
-//   currency: { fontSize: 14, fontWeight: 'bold' },
-//   countryName: { fontSize: 12, color: '#555' },
-//   hint: { fontSize: 12, color: '#888' },
-//   amountInput: {
-//     fontSize: 18,
-//     fontWeight: '600',
-//     borderBottomWidth: 1,
-//     borderColor: '#ccc',
-//     width: 80,
-//     textAlign: 'right',
-//   },
-//   amount: { fontSize: 18, fontWeight: '600' },
-//   swapWrapper: { alignItems: 'center', marginVertical: 10 },
-//   swapButton: { backgroundColor: '#d1f0fc', padding: 10, borderRadius: 50 },
-//   swapIcon: { fontSize: 22, color: '#2980b9' },
-//   summarySection: {
-//     marginTop: 20,
-//     padding: 15,
-//     backgroundColor: '#f9f9f9',
-//     borderRadius: 10,
-//   },
-//   summaryHeader: { fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
-//   promotionText: { fontSize: 14, color: '#3498db', marginBottom: 15 },
-//   summaryRow: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     marginBottom: 8,
-//   },
-//   summaryLabel: { fontSize: 14, color: '#555' },
-//   summaryValue: { fontSize: 14, fontWeight: 'bold' },
-//   checkboxRow: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     marginTop: 20,
-//     marginBottom: 30,
-//   },
-//   checkboxText: { marginLeft: 10, fontSize: 14 },
-//   continueBtn: {
-//     backgroundColor: '#2b6cb0',
-//     padding: 16,
-//     borderRadius: 30,
-//     alignItems: 'center',
-//   },
-//   continueText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-// });
-
-
-
-
-
-
-
-
-
-
-// import { useRouter } from 'expo-router';
-// import React, { useEffect, useMemo, useState } from 'react';
-// import {
-//   ActivityIndicator,
-//   Alert,
-//   Image,
-//   SafeAreaView,
-//   StyleSheet,
-//   Switch,
-//   Text,
-//   TextInput,
-//   TouchableOpacity,
-//   View,
-// } from 'react-native';
-// import { useTransaction } from '../../context/TransactionContext';
-// import { TransactionService } from '../../services/apiClient';
-// import currencyMap from '../CountryCurrencyCode.json';
-// import flagCodes from '../CountryFlagCodes.json';
-// import flagMap from '../flagMap';
-
-// export default function SendMoneyScreen() {
-//   const router = useRouter();
-//   const { transactionData, updateTransaction } = useTransaction();
-// console.log("the transaction data is ",transactionData)
-//   const fromCountry = transactionData.sendCountry;
-//   const [deliveryService, setDeliveryService] = useState('Somalia.EVC');
-//   const [sendAmount, setSendAmount] = useState('');
-//   const [receiveAmount, setReceiveAmount] = useState('');
-//   const [inputMode, setInputMode] = useState('send'); // 'send' or 'receive'
-//   const [onBehalf, setOnBehalf] = useState(false);
-//   const [loading, setLoading] = useState(false);
-
-//   const [exchangeData, setExchangeData] = useState({
-//     ExchangeRate: 0,
-//     Margin: 0,
-//     EffectiveRate: 0,
-//     FixedFee: 0,
-//     MinimumFee: 0,
-//     ProviderName: null,
-//   });
-
-//   const deliveryCountry = transactionData.receivingCountry;
-//   const fromCurrency = currencyMap[fromCountry] ;
-//   const toCurrency = transactionData.receiveCurrency;
- 
-
-//   const fromFlag = flagMap[flagCodes[fromCountry]?.toLowerCase()] || flagMap['us'];
-//   const toFlag = flagMap[flagCodes[deliveryCountry]?.toLowerCase()] || flagMap['us'];
-// console.log("delivery country",deliveryCountry)
-//   useEffect(() => {
-//     const fetchExchangeRate = async () => {
-//       if (!fromCurrency || !toCurrency) return;
-
-//       setLoading(true);
-//       try {
-//         const data = await TransactionService.fetchExchangeRate(fromCurrency, toCurrency);
-
-//         if (!data || isNaN(Number(data.EffectiveRate))) throw new Error('Invalid API response');
-
-//         setExchangeData({
-//           ExchangeRate: Number(data.ExchangeRate),
-//           Margin: Number(data.Margin),
-//           EffectiveRate: Number(data.EffectiveRate),
-//           FixedFee: Number(data.FixedFee) || 2,
-//           MinimumFee: Number(data.MinimumFee) || 0,
-//           ProviderName: data.ProviderName || null,
-//         });
-
-//       } catch (error) {
-//         console.warn('Exchange fetch failed:', error.message);
-//         Alert.alert('Notice', 'Could not fetch exchange rate. Default values will be used.');
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     fetchExchangeRate();
-//   }, [deliveryService]);
-
-//   const handleAmountChange = (text, field) => {
-//     const cleanedText = text.replace(/[^0-9.]/g, '');
-//     const decimalCount = cleanedText.split('.').length - 1;
-//     if (decimalCount > 1) return;
-//     if (cleanedText.startsWith('-')) return;
-    
-//     if (field === 'send') {
-//       setSendAmount(cleanedText);
-//       setInputMode('send');
-//     } else {
-//       setReceiveAmount(cleanedText);
-//       setInputMode('receive');
-//     }
-//   };
-
-//   const { calculatedSendAmount, calculatedReceiveAmount, feeAmount, totalToPay } = useMemo(() => {
-//     const rate = Number(exchangeData.EffectiveRate);
-//     const exchange = Number(exchangeData.ExchangeRate);
-    
-//     let numericSendAmount = 0;
-//     let numericReceiveAmount = 0;
-    
-//     if (inputMode === 'send') {
-//       numericSendAmount = parseFloat(sendAmount) || 0;
-//       numericReceiveAmount = numericSendAmount * rate;
-//     } else {
-//       numericReceiveAmount = parseFloat(receiveAmount) || 0;
-//       numericSendAmount = numericReceiveAmount / rate;
-//     }
-    
-//     const feeUnits = Math.floor(numericSendAmount / 100);
-//     let calculatedFeeAmount = feeUnits * exchangeData.FixedFee;
-//     calculatedFeeAmount = Math.max(calculatedFeeAmount, exchangeData.MinimumFee);
-
-//     const calculatedTotalToPay = numericSendAmount + calculatedFeeAmount;
-
-//     return { 
-//       calculatedSendAmount: numericSendAmount,
-//       calculatedReceiveAmount: numericReceiveAmount,
-//       feeAmount: calculatedFeeAmount,
-//       totalToPay: calculatedTotalToPay
-//     };
-//   }, [sendAmount, receiveAmount, inputMode, exchangeData]);
-
-//   useEffect(() => {
-//     updateTransaction({
-//       exchangeRate: exchangeData.ExchangeRate,
-//       fees: feeAmount,
-//       totalAmount: totalToPay,
-//       sendAmount: calculatedSendAmount,
-//       receiveAmount: calculatedReceiveAmount,
-//       // sendCurrency: fromCurrency,
-//       // receiveCurrency: toCurrency,
-//       // sendCountry: fromCountry,
-//       receivingCountry: deliveryCountry,
-//       service: 'MobileMoney',
-//       providerName: exchangeData.ProviderName || '',
-//     });
-//   }, [
-//     calculatedSendAmount,
-//     calculatedReceiveAmount,
-//     feeAmount,
-//     totalToPay,
-//     exchangeData,
-//     fromCurrency,
-//     toCurrency,
-//     fromCountry,
-//     deliveryCountry
-//   ]);
-
-//   const handleSendAmountFocus = () => {
-//     setInputMode('send');
-//   };
-
-//   const handleReceiveAmountFocus = () => {
-//     setInputMode('receive');
-//   };
-
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       <Text style={styles.header}>Send Money</Text>
-
-//       {/* Exchange Rate */}
-//       <View style={styles.exchangeRateContainer}>
-//         <Text style={styles.exchangeRateText}>
-//           1 {fromCurrency} = {exchangeData.EffectiveRate.toFixed(5)} {toCurrency}
-//         </Text>
-//       </View>
-
-//       {/* From Country Card */}
-//       <View style={styles.card}>
-//         <View style={styles.cardHeader}>
-//           <Text style={styles.cardHeaderText}>You Send</Text>
-//         </View>
-//         <View style={styles.cardContent}>
-//           <View style={styles.currencyInfo}>
-//             <Image source={fromFlag} style={styles.flag} />
-//             <View style={styles.currencyTextContainer}>
-//               <Text style={styles.currencyCode}>{fromCurrency}</Text>
-//               <Text style={styles.countryName}>{fromCountry}</Text>
-//             </View>
-//           </View>
-//           <View style={styles.amountContainer}>
-//             {loading ? (
-//               <ActivityIndicator size="small" color="#3498db" />
-//             ) : (
-//               <TextInput
-//                 value={inputMode === 'send' ? sendAmount : calculatedSendAmount.toFixed(2)}
-//                 onChangeText={(text) => handleAmountChange(text, 'send')}
-//                 onFocus={handleSendAmountFocus}
-//                 keyboardType="decimal-pad"
-//                 placeholder="0.00"
-//                 style={styles.amountInput}
-//               />
-//             )}
-//           </View>
-//         </View>
-//       </View>
-
-//       {/* Divider */}
-//       <View style={styles.divider} />
-
-//       {/* To Country Card */}
-//       <View style={styles.card}>
-//         <View style={styles.cardHeader}>
-//           <Text style={styles.cardHeaderText}>They Receive</Text>
-//         </View>
-//         <View style={styles.cardContent}>
-//           <View style={styles.currencyInfo}>
-//             <Image source={toFlag} style={styles.flag} />
-//             <View style={styles.currencyTextContainer}>
-//               <Text style={styles.currencyCode}>{toCurrency}</Text>
-//               <Text style={styles.countryName}>{deliveryCountry}</Text>
-//             </View>
-//           </View>
-//           <View style={styles.amountContainer}>
-//             {loading ? (
-//               <ActivityIndicator size="small" color="#3498db" />
-//             ) : (
-//               <TextInput
-//                 value={inputMode === 'receive' ? receiveAmount : calculatedReceiveAmount.toFixed(2)}
-//                 onChangeText={(text) => handleAmountChange(text, 'receive')}
-//                 onFocus={handleReceiveAmountFocus}
-//                 keyboardType="decimal-pad"
-//                 placeholder="0.00"
-//                 style={styles.amountInput}
-//               />
-//             )}
-//           </View>
-//         </View>
-//       </View>
-
-//       {/* Summary Section */}
-//       <View style={styles.summaryContainer}>
-//         <Text style={styles.summaryHeader}>Amount Summary</Text>
-//         <Text style={styles.promotionText}>Have a promotion code?</Text>
-
-//         <View style={styles.summaryRow}>
-//           <Text style={styles.summaryLabel}>They Receive</Text>
-//           <Text style={styles.summaryValue}>
-//             {toCurrency} {calculatedReceiveAmount.toFixed(2)}
-//           </Text>
-//         </View>
-//         <View style={styles.summaryRow}>
-//           <Text style={styles.summaryLabel}>You Send</Text>
-//           <Text style={styles.summaryValue}>
-//             {fromCurrency} {calculatedSendAmount.toFixed(2)}
-//           </Text>
-//         </View>
-//         <View style={styles.summaryRow}>
-//           <Text style={styles.summaryLabel}>Fees</Text>
-//           <Text style={styles.summaryValue}>
-//             {fromCurrency} {feeAmount.toFixed(2)}
-//           </Text>
-//         </View>
-//         <View style={[styles.summaryRow, styles.totalRow]}>
-//           <Text style={[styles.summaryLabel, styles.totalLabel]}>Total To Pay</Text>
-//           <Text style={[styles.summaryValue, styles.totalValue]}>
-//             {fromCurrency} {totalToPay.toFixed(2)}
-//           </Text>
-//         </View>
-//       </View>
-
-//       {/* Switch */}
-//       <View style={styles.switchContainer}>
-//         <Switch
-//           value={onBehalf}
-//           onValueChange={setOnBehalf}
-//           trackColor={{ false: '#767577', true: '#2b6cb0' }}
-//           thumbColor={onBehalf ? '#f4f3f4' : '#f4f3f4'}
-//         />
-//         <Text style={styles.switchText}>
-//           I am <Text style={{ fontWeight: 'bold' }}>NOT</Text> sending on behalf of others
-//         </Text>
-//       </View>
-
-//       {/* Continue Button */}
-//       <TouchableOpacity
-//         style={[styles.continueButton, (calculatedSendAmount <= 0) && styles.disabledButton]}
-//         disabled={loading || calculatedSendAmount <= 0}
-//         onPress={() => router.push("/recipient/RecipientListScreen")}
-//       >
-//         {loading ? (
-//           <ActivityIndicator color="#fff" />
-//         ) : (
-//           <Text style={styles.continueButtonText}>Continue</Text>
-//         )}
-//       </TouchableOpacity>
-//     </SafeAreaView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#fff',
-//     padding: 20,
-//   },
-//   header: {
-//     fontSize: 24,
-//     fontWeight: 'bold',
-//     textAlign: 'center',
-//     marginBottom: 16,
-//     color: '#2d3748',
-//   },
-//   exchangeRateContainer: {
-//     backgroundColor: '#f0f9ff',
-//     padding: 12,
-//     borderRadius: 8,
-//     marginBottom: 20,
-//     alignItems: 'center',
-//   },
-//   exchangeRateText: {
-//     fontSize: 16,
-//     fontWeight: '600',
-//     color: '#2b6cb0',
-//   },
-//   card: {
-//     backgroundColor: '#ffffff',
-//     borderRadius: 12,
-//     padding: 0,
-//     marginBottom: 8,
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 1 },
-//     shadowOpacity: 0.1,
-//     shadowRadius: 3,
-//     elevation: 2,
-//   },
-//   cardHeader: {
-//     backgroundColor: '#f7fafc',
-//     paddingVertical: 12,
-//     paddingHorizontal: 16,
-//     borderTopLeftRadius: 12,
-//     borderTopRightRadius: 12,
-//   },
-//   cardHeaderText: {
-//     fontSize: 14,
-//     fontWeight: '600',
-//     color: '#4a5568',
-//   },
-//   cardContent: {
-//     padding: 16,
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     alignItems: 'center',
-//   },
-//   currencyInfo: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//   },
-//   flag: {
-//     width: 40,
-//     height: 30,
-//     borderRadius: 4,
-//     marginRight: 12,
-//   },
-//   currencyTextContainer: {
-//     flexDirection: 'column',
-//   },
-//   currencyCode: {
-//     fontSize: 18,
-//     fontWeight: 'bold',
-//     color: '#2d3748',
-//   },
-//   countryName: {
-//     fontSize: 14,
-//     color: '#718096',
-//   },
-//   amountContainer: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//   },
-//   amountInput: {
-//     fontSize: 20,
-//     fontWeight: 'bold',
-//     color: '#2d3748',
-//     textAlign: 'right',
-//     minWidth: 100,
-//   },
-//   divider: {
-//     height: 1,
-//     backgroundColor: '#e2e8f0',
-//     marginVertical: 8,
-//   },
-//   summaryContainer: {
-//     backgroundColor: '#ffffff',
-//     borderRadius: 12,
-//     padding: 16,
-//     marginTop: 20,
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 1 },
-//     shadowOpacity: 0.1,
-//     shadowRadius: 3,
-//     elevation: 2,
-//   },
-//   summaryHeader: {
-//     fontSize: 18,
-//     fontWeight: 'bold',
-//     color: '#2d3748',
-//     marginBottom: 8,
-//   },
-//   promotionText: {
-//     fontSize: 14,
-//     color: '#2b6cb0',
-//     marginBottom: 16,
-//   },
-//   summaryRow: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     marginBottom: 12,
-//   },
-//   summaryLabel: {
-//     fontSize: 14,
-//     color: '#4a5568',
-//   },
-//   summaryValue: {
-//     fontSize: 14,
-//     fontWeight: '600',
-//     color: '#2d3748',
-//   },
-//   totalRow: {
-//     marginTop: 8,
-//     paddingTop: 8,
-//     borderTopWidth: 1,
-//     borderTopColor: '#e2e8f0',
-//   },
-//   totalLabel: {
-//     fontWeight: 'bold',
-//   },
-//   totalValue: {
-//     fontWeight: 'bold',
-//     color: '#2b6cb0',
-//   },
-//   switchContainer: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     marginTop: 24,
-//     marginBottom: 16,
-//   },
-//   switchText: {
-//     marginLeft: 8,
-//     fontSize: 14,
-//     color: '#4a5568',
-//   },
-//   continueButton: {
-//     backgroundColor: '#2b6cb0',
-//     padding: 16,
-//     borderRadius: 8,
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//     marginTop: 8,
-//   },
-//   disabledButton: {
-//     opacity: 0.6,
-//   },
-//   continueButtonText: {
-//     color: '#ffffff',
-//     fontSize: 16,
-//     fontWeight: 'bold',
-//   },
-// });
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useTransaction } from '../../context/TransactionContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TransactionService } from '../../services/apiClient';
-import currencyMap from '../CountryCurrencyCode.json';
-import flagMap from '../flagMap';
+import { getTransferDraft, mergeTransferDraft } from '../../services/transferDraft';
 
-// Country to flag mapping utility
-const countryCodeMap: Record<string, string> = {
-  'norway': 'no',
-  'somalia': 'so',
-  'kenya': 'ke',
-  'uganda': 'ug',
-  'tanzania': 'tz',
-  'ethiopia': 'et',
-  'djibouti': 'dj',
-  'united states': 'us',
-  'united kingdom': 'gb',
-  'canada': 'ca',
-  // Add more countries as needed
-};
-
-const getFlagForCountry = (countryName: string) => {
-  if (!countryName) return flagMap.us;
-  
-  const lowerCaseCountry = countryName.toLowerCase();
-  const countryCode = countryCodeMap[lowerCaseCountry] || 'us';
-  return flagMap[countryCode] || flagMap.us;
-};
-
-// Type definitions
 type ExchangeData = {
   ExchangeRate: number;
   Margin: number;
   EffectiveRate: number;
-  FixedFee: number;
-  MinimumFee: number;
   ProviderName: string | null;
+  QuoteFee: number;
+  QuoteTotalAmount: number;
+  QuoteSendAmount: number;
+  QuoteReceiveAmount: number;
 };
 
 type InputMode = 'send' | 'receive';
 
 const MINIMUM_SEND_AMOUNT = 1;
-const DEBOUNCE_DELAY = 500;
+
+const fallbackCurrencies: Record<string, string> = {
+  Norway: 'NOK',
+  Somalia: 'USD',
+  Kenya: 'KES',
+  Uganda: 'UGX',
+  Tanzania: 'TZS',
+};
+
+const formatSummaryMoney = (amount: number, currency: string) =>
+  `${Number(amount || 0).toFixed(2)} ${currency}`;
+
+const formatInputMoney = (amount: number) => {
+  if (!Number.isFinite(amount)) return '0';
+  if (amount === 0) return '0';
+  if (Math.abs(amount % 1) < 0.001) return String(Math.trunc(amount));
+  return amount.toFixed(2);
+};
+
+const sanitizeNumericInput = (value: string) => {
+  const cleaned = value.replace(/[^0-9.,]/g, '').replace(',', '.');
+  if ((cleaned.match(/\./g) || []).length > 1) return null;
+  return cleaned;
+};
 
 export default function SendMoneyScreen() {
   const router = useRouter();
-  const { transactionData, updateTransaction } = useTransaction();
-  
-  // Extract transaction data with defaults
-  const fromCountry = transactionData.sendCountry || '';
-  const deliveryCountry = transactionData.receivingCountry || '';
-  const fromCurrency = currencyMap[fromCountry] || 'USD';
-  const toCurrency = transactionData.receiveCurrency || '';
-  
-  // State management
-  const [deliveryService] = useState('Somalia.EVC');
-  const [sendAmount, setSendAmount] = useState('');
-  const [receiveAmount, setReceiveAmount] = useState('');
+  const insets = useSafeAreaInsets();
+  const transactionData = getTransferDraft();
+
+  const fromCountry = transactionData.sendCountry || 'Norway';
+  const deliveryCountry = transactionData.receivingCountry || 'Somalia';
+  const fromCurrency = transactionData.sendCurrency || fallbackCurrencies[fromCountry] || 'NOK';
+  const toCurrency = transactionData.receiveCurrency || fallbackCurrencies[deliveryCountry] || 'USD';
+
+  const [sendAmount, setSendAmount] = useState(transactionData.sendAmount ? String(transactionData.sendAmount) : '');
+  const [receiveAmount, setReceiveAmount] = useState(transactionData.receiveAmount ? String(transactionData.receiveAmount.toFixed(2)) : '');
   const [inputMode, setInputMode] = useState<InputMode>('send');
-  const [onBehalf, setOnBehalf] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
+  const quoteRequestIdRef = useRef(0);
 
   const [exchangeData, setExchangeData] = useState<ExchangeData>({
     ExchangeRate: 0,
     Margin: 0,
     EffectiveRate: 0,
-    FixedFee: 2,
-    MinimumFee: 0,
     ProviderName: null,
+    QuoteFee: 0,
+    QuoteTotalAmount: 0,
+    QuoteSendAmount: 0,
+    QuoteReceiveAmount: 0,
   });
 
-  // Get flag images using our utility function
-  const fromFlag = getFlagForCountry(fromCountry);
-  const toFlag = getFlagForCountry(deliveryCountry);
-
-  // Fetch exchange rate data
   useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
+    if (!fromCurrency || !toCurrency) return;
 
-    const fetchExchangeRate = async () => {
-      if (!fromCurrency || !toCurrency) return;
+    const activeValue = inputMode === 'send' ? sendAmount : receiveAmount;
+    const parsedActiveValue = parseFloat(activeValue);
 
-      setLoading(true);
+    if (!activeValue || Number.isNaN(parsedActiveValue) || parsedActiveValue <= 0) {
+      setExchangeData((current) => ({
+        ...current,
+        QuoteFee: 0,
+        QuoteTotalAmount: 0,
+        QuoteSendAmount: inputMode === 'send' ? 0 : current.QuoteSendAmount,
+        QuoteReceiveAmount: inputMode === 'receive' ? 0 : current.QuoteReceiveAmount,
+      }));
+      return;
+    }
+
+    const requestId = ++quoteRequestIdRef.current;
+    const timeoutId = setTimeout(async () => {
       try {
-        const data = await TransactionService.fetchExchangeRate(
-          fromCurrency, 
-          toCurrency,
-          
-        );
+        setLoading(true);
 
-        if (!isMounted) return;
+        const rate = Number(exchangeData.EffectiveRate || exchangeData.ExchangeRate || 1) || 1;
+        const quoteAmount =
+          inputMode === 'send'
+            ? parsedActiveValue
+            : Math.max(parsedActiveValue / rate, MINIMUM_SEND_AMOUNT);
 
-        if (!data || isNaN(Number(data.EffectiveRate))) {
-          throw new Error('Invalid API response');
-        }
-
-        setExchangeData({
-          ExchangeRate: Number(data.ExchangeRate),
-          Margin: Number(data.Margin),
-          EffectiveRate: Number(data.EffectiveRate),
-          FixedFee: Number(data.FixedFee) || 2,
-          MinimumFee: Number(data.MinimumFee) || 0,
-          ProviderName: data.ProviderName || null,
+        const data = await TransactionService.createQuote({
+          sendAmount: quoteAmount,
+          sendCurrency: fromCurrency,
+          receiveCurrency: toCurrency,
         });
 
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.warn('Exchange fetch failed:', error.message);
-          Alert.alert(
-            'Service Notice', 
-            'Could not fetch current exchange rates. Using default values.',
-            [{ text: 'OK', onPress: () => {} }]
-          );
+        if (quoteRequestIdRef.current !== requestId) return;
+
+        const nextSendAmount = Number(data.sendAmount || data.SendAmount || quoteAmount);
+        const nextReceiveAmount = Number(data.receiveAmount || data.ReceiveAmount || 0);
+
+        setExchangeData({
+          ExchangeRate: Number(data.exchangeRate || data.ExchangeRate || 1),
+          Margin: Number(data.margin || data.Margin || 0),
+          EffectiveRate: Number(data.effectiveRate || data.EffectiveRate || data.exchangeRate || data.ExchangeRate || 1),
+          ProviderName: data.providerName || data.ProviderName || null,
+          QuoteFee: Number(data.fee || data.Fee || 0),
+          QuoteTotalAmount: Number(data.totalAmount || data.TotalAmount || 0),
+          QuoteSendAmount: nextSendAmount,
+          QuoteReceiveAmount: nextReceiveAmount,
+        });
+
+        if (inputMode === 'send') {
+          setReceiveAmount(formatInputMoney(nextReceiveAmount));
+        } else {
+          setSendAmount(formatInputMoney(nextSendAmount));
+        }
+
+        mergeTransferDraft({
+          quoteId: data.quoteId || data.QuoteId || '',
+        });
+      } catch (error: any) {
+        if (quoteRequestIdRef.current === requestId && error?.name !== 'AbortError') {
+          Alert.alert('Quote unavailable', 'Could not refresh the latest rate. Default values are being used.');
         }
       } finally {
-        if (isMounted) setLoading(false);
+        if (quoteRequestIdRef.current === requestId) {
+          setLoading(false);
+        }
       }
-    };
-
-    fetchExchangeRate();
+    }, 300);
 
     return () => {
-      isMounted = false;
-      controller.abort();
+      clearTimeout(timeoutId);
     };
-  }, [fromCurrency, toCurrency, deliveryService]);
+  }, [exchangeData.EffectiveRate, exchangeData.ExchangeRate, fromCurrency, inputMode, receiveAmount, sendAmount, toCurrency]);
 
-  // Handle amount changes with validation
-  const handleAmountChange = (text: string, field: InputMode) => {
-    const cleanedText = text.replace(/[^0-9.]/g, '');
-    const decimalCount = cleanedText.split('.').length - 1;
-    if (decimalCount > 1) return;
-    if (cleanedText.startsWith('-')) return;
-    
+  const handleAmountChange = (value: string, field: InputMode) => {
+    const cleaned = sanitizeNumericInput(value);
+    if (cleaned === null) return;
+
     if (field === 'send') {
-      setSendAmount(cleanedText);
+      setSendAmount(cleaned);
       setInputMode('send');
     } else {
-      setReceiveAmount(cleanedText);
+      setReceiveAmount(cleaned);
       setInputMode('receive');
     }
-    
-    setLastUpdated(Date.now());
   };
 
-  // Debounced amount calculations
-  const { calculatedSendAmount, calculatedReceiveAmount, feeAmount, totalToPay } = useMemo(() => {
-    const rate = Number(exchangeData.EffectiveRate) || 1;
-    const exchange = Number(exchangeData.ExchangeRate) || 1;
-    
-    let numericSendAmount = 0;
-    let numericReceiveAmount = 0;
-    
-    if (inputMode === 'send') {
-      numericSendAmount = parseFloat(sendAmount) || 0;
-      numericReceiveAmount = numericSendAmount * rate;
-    } else {
-      numericReceiveAmount = parseFloat(receiveAmount) || 0;
-      numericSendAmount = numericReceiveAmount / rate;
-    }
-    
-    const feeUnits = Math.floor(numericSendAmount / 100);
-    let calculatedFeeAmount = feeUnits * exchangeData.FixedFee;
-    calculatedFeeAmount = Math.max(calculatedFeeAmount, exchangeData.MinimumFee);
+  const { calculatedSendAmount, calculatedReceiveAmount, feeAmount, totalToPay } = useMemo(() => ({
+    calculatedSendAmount: Number(parseFloat(sendAmount) || exchangeData.QuoteSendAmount || 0),
+    calculatedReceiveAmount: Number(parseFloat(receiveAmount) || exchangeData.QuoteReceiveAmount || 0),
+    feeAmount: Number(exchangeData.QuoteFee || 0),
+    totalToPay: Number(exchangeData.QuoteTotalAmount || parseFloat(sendAmount) || 0),
+  }), [exchangeData, receiveAmount, sendAmount]);
 
-    const calculatedTotalToPay = numericSendAmount + calculatedFeeAmount;
-
-    return { 
-      calculatedSendAmount: numericSendAmount,
-      calculatedReceiveAmount: numericReceiveAmount,
-      feeAmount: calculatedFeeAmount,
-      totalToPay: calculatedTotalToPay
-    };
-  }, [sendAmount, receiveAmount, inputMode, exchangeData, lastUpdated]);
-
-  // Update transaction context
   useEffect(() => {
-    updateTransaction({
-      exchangeRate: exchangeData.ExchangeRate,
+    mergeTransferDraft({
+      exchangeRate: exchangeData.ExchangeRate || exchangeData.EffectiveRate || 1,
       fees: feeAmount,
       totalAmount: totalToPay,
       sendAmount: calculatedSendAmount,
       receiveAmount: calculatedReceiveAmount,
       receivingCountry: deliveryCountry,
-      service: 'MobileMoney',
-      providerName: exchangeData.ProviderName || '',
+      sendCountry: fromCountry,
+      sendCurrency: fromCurrency,
+      receiveCurrency: toCurrency,
+      service: transactionData.service || 'MobileMoney',
+      providerName: exchangeData.ProviderName || transactionData.providerName || '',
     });
-  }, [calculatedSendAmount, calculatedReceiveAmount, feeAmount, totalToPay, exchangeData]);
+  }, [
+    calculatedReceiveAmount,
+    calculatedSendAmount,
+    deliveryCountry,
+    exchangeData,
+    feeAmount,
+    fromCountry,
+    fromCurrency,
+    toCurrency,
+    totalToPay,
+    transactionData.providerName,
+    transactionData.service,
+  ]);
 
-  const handleSendAmountFocus = () => setInputMode('send');
-  const handleReceiveAmountFocus = () => setInputMode('receive');
-
-  // Check if the form is valid for submission
   const isFormValid = calculatedSendAmount >= MINIMUM_SEND_AMOUNT && !loading;
+  const liveRate = Number(exchangeData.EffectiveRate || exchangeData.ExchangeRate || 1);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Send Money</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 6 }]}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 112 + Math.max(insets.bottom, 8) }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.85}>
+            <Ionicons name="arrow-back" size={20} color="#222222" />
+          </TouchableOpacity>
 
-      {/* Exchange Rate Display */}
-      <View style={styles.exchangeRateContainer}>
-        {loading ? (
-          <ActivityIndicator size="small" color="#3498db" />
-        ) : (
-          <Text style={styles.exchangeRateText}>
-            1 {fromCurrency} = {exchangeData.EffectiveRate.toFixed(5)} {toCurrency}
-          </Text>
-        )}
-        {exchangeData.ProviderName && (
-          <Text style={styles.providerText}>Rate provided by {exchangeData.ProviderName}</Text>
-        )}
-      </View>
+          <Text style={styles.screenLabel}>Sending to {deliveryCountry}</Text>
 
-      {/* From Country Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardHeaderText}>You Send</Text>
-        </View>
-        <View style={styles.cardContent}>
-          <View style={styles.currencyInfo}>
-            <Image 
-              source={fromFlag} 
-              style={styles.flag} 
-              resizeMode="contain"
-              onError={() => console.log('Failed to load flag for', fromCountry)}
-            />
-            <View style={styles.currencyTextContainer}>
-              <Text style={styles.currencyCode}>{fromCurrency}</Text>
-              <Text style={styles.countryName}>{fromCountry}</Text>
+          <Text style={styles.title}>Transfer Amount</Text>
+
+          <View style={styles.primaryReceiveCard}>
+            <View style={styles.primaryReceiveContent}>
+              <Text style={styles.primaryReceiveLabel}>They get</Text>
+              <View style={styles.primaryReceiveAmountRow}>
+                <TextInput
+                  value={receiveAmount}
+                  onChangeText={(value) => handleAmountChange(value, 'receive')}
+                  onFocus={() => setInputMode('receive')}
+                  keyboardType="decimal-pad"
+                  placeholder={formatInputMoney(calculatedReceiveAmount)}
+                  placeholderTextColor="#0A7A42"
+                  style={styles.primaryReceiveInput}
+                />
+                <View style={styles.primaryReceiveCurrencyBadge}>
+                  <CountryFlag country={deliveryCountry} />
+                  <Text style={styles.primaryReceiveCurrency}>{toCurrency}</Text>
+                </View>
+              </View>
             </View>
           </View>
-          <View style={styles.amountContainer}>
-            <TextInput
-              value={inputMode === 'send' ? sendAmount : calculatedSendAmount.toFixed(2)}
-              onChangeText={(text) => handleAmountChange(text, 'send')}
-              onFocus={handleSendAmountFocus}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              style={styles.amountInput}
-              editable={!loading}
-              selectTextOnFocus
+
+          <View style={styles.amountStack}>
+            <AmountCard
+              country={fromCountry}
+              currency={fromCurrency}
+              label="You send"
+              value={sendAmount}
+              displayValue={formatInputMoney(calculatedSendAmount)}
+              onChangeText={(value) => handleAmountChange(value, 'send')}
+              onFocus={() => setInputMode('send')}
+              compact
             />
           </View>
-        </View>
-      </View>
 
-      {/* Divider with arrow icon */}
-      <View style={styles.dividerContainer}>
-        <View style={styles.dividerLine} />
-        <Image 
-          source={require('../../assets/down-arrow.png')} 
-          style={styles.dividerArrow} 
-        />
-        <View style={styles.dividerLine} />
-      </View>
-
-      {/* To Country Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardHeaderText}>They Receive</Text>
-        </View>
-        <View style={styles.cardContent}>
-          <View style={styles.currencyInfo}>
-            <Image 
-              source={toFlag} 
-              style={styles.flag} 
-              resizeMode="contain"
-              onError={() => console.log('Failed to load flag for', deliveryCountry)}
-            />
-            <View style={styles.currencyTextContainer}>
-              <Text style={styles.currencyCode}>{toCurrency}</Text>
-              <Text style={styles.countryName}>{deliveryCountry}</Text>
+          <View style={styles.summaryPanel}>
+            <View style={styles.costRow}>
+              <Text style={styles.costLabel}>Exchange rate</Text>
+              <Text style={styles.costValue}>1 {fromCurrency} = {liveRate.toFixed(4)} {toCurrency}</Text>
+            </View>
+            <View style={styles.costRow}>
+              <Text style={styles.costLabel}>Fee</Text>
+              <Text style={styles.costValue}>{formatSummaryMoney(feeAmount, fromCurrency)}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.costRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>{formatSummaryMoney(totalToPay, fromCurrency)}</Text>
             </View>
           </View>
-          <View style={styles.amountContainer}>
-            <TextInput
-              value={inputMode === 'receive' ? receiveAmount : calculatedReceiveAmount.toFixed(2)}
-              onChangeText={(text) => handleAmountChange(text, 'receive')}
-              onFocus={handleReceiveAmountFocus}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              style={styles.amountInput}
-              editable={!loading}
-              selectTextOnFocus
-            />
-          </View>
+        </ScrollView>
+
+        <View style={[styles.footer, { bottom: Math.max(insets.bottom, 8) + 18 }]}>
+          <TouchableOpacity
+            style={[styles.nextButton, !isFormValid && styles.nextButtonDisabled]}
+            onPress={() => router.push('/recipient/RecipientListScreen')}
+            disabled={!isFormValid}
+            activeOpacity={0.9}
+          >
+            {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.nextButtonText}>Confirm & Send</Text>}
+          </TouchableOpacity>
         </View>
       </View>
-
-      {/* Summary Section */}
-      <View style={styles.summaryContainer}>
-        <Text style={styles.summaryHeader}>Amount Summary</Text>
-        
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>They Receive</Text>
-          <Text style={styles.summaryValue}>
-            {toCurrency} {calculatedReceiveAmount.toFixed(2)}
-          </Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>You Send</Text>
-          <Text style={styles.summaryValue}>
-            {fromCurrency} {calculatedSendAmount.toFixed(2)}
-          </Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Fees</Text>
-          <Text style={styles.summaryValue}>
-            {fromCurrency} {feeAmount.toFixed(2)}
-          </Text>
-        </View>
-        <View style={[styles.summaryRow, styles.totalRow]}>
-          <Text style={[styles.summaryLabel, styles.totalLabel]}>Total To Pay</Text>
-          <Text style={[styles.summaryValue, styles.totalValue]}>
-            {fromCurrency} {totalToPay.toFixed(2)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Compliance Switch */}
-      <View style={styles.switchContainer}>
-        <Switch
-          value={onBehalf}
-          onValueChange={setOnBehalf}
-          trackColor={{ false: '#767577', true: '#2b6cb0' }}
-          thumbColor="#f4f3f4"
-          ios_backgroundColor="#3e3e3e"
-        />
-        <Text style={styles.switchText}>
-          I confirm I'm sending this money for my own purposes
-        </Text>
-      </View>
-
-      {/* Continue Button */}
-      <TouchableOpacity
-        style={[
-          styles.continueButton, 
-          !isFormValid && styles.disabledButton,
-          loading && styles.loadingButton
-        ]}
-        disabled={!isFormValid || loading}
-        onPress={() => router.push("/recipient/RecipientListScreen")}
-        activeOpacity={0.8}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.continueButtonText}>
-            {calculatedSendAmount > 0 ? 'Continue' : 'Enter Amount'}
-          </Text>
-        )}
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
+function AmountCard({
+  currency,
+  country,
+  label,
+  value,
+  displayValue,
+  onChangeText,
+  onFocus,
+  compact,
+}: {
+  currency: string;
+  country: string;
+  label: string;
+  value: string;
+  displayValue: string;
+  onChangeText: (value: string) => void;
+  onFocus: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <View style={[styles.amountCard, compact && styles.amountCardCompact]}>
+      <View style={styles.amountCardHeader}>
+        <Text style={styles.amountLabel}>{label}</Text>
+        <Text style={styles.amountHint}>{country}</Text>
+      </View>
+      <View style={styles.amountInner}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={onFocus}
+          keyboardType="decimal-pad"
+          placeholder={displayValue}
+          placeholderTextColor="#181818"
+          style={[styles.amountInput, compact && styles.amountInputCompact]}
+        />
+        <View style={styles.currencyBadge}>
+          <CountryFlag country={country} />
+          <Text style={styles.currencyCode}>{currency}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function CountryFlag({ country }: { country: string }) {
+  if (country === 'Norway') {
+    return (
+      <View style={[styles.flagBox, styles.flagNorway]}>
+        <View style={styles.flagNorwayVertical} />
+        <View style={styles.flagNorwayHorizontal} />
+      </View>
+    );
+  }
+
+  if (country === 'Somalia') {
+    return (
+      <View style={[styles.flagBox, styles.flagSomalia]}>
+        <Ionicons name="star" size={10} color="#FFFFFF" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.flagBox, styles.flagDefault]}>
+      <Text style={styles.flagText}>{country.slice(0, 2).toUpperCase()}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-    padding: 16,
+    backgroundColor: '#FFFFFF',
   },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2d3748',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  exchangeRateContainer: {
-    backgroundColor: '#e2e8f0',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  exchangeRateText: {
-    fontSize: 16,
-    color: '#4a5568',
-    fontWeight: '600',
-  },
-  providerText: {
-    fontSize: 12,
-    color: '#718096',
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginBottom: 8,
-  },
-  cardHeader: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#edf2f7',
-    padding: 16,
-  },
-  cardHeaderText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4a5568',
-  },
-  cardContent: {
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  currencyInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  flag: {
-    width: 40,
-    height: 30,
-    borderRadius: 4,
-    marginRight: 12,
-  },
-  currencyTextContainer: {
-    flexDirection: 'column',
-  },
-  currencyCode: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2d3748',
-  },
-  countryName: {
-    fontSize: 14,
-    color: '#718096',
-  },
-  amountContainer: {
+  scrollView: {
     flex: 1,
-    alignItems: 'flex-end',
   },
-  amountInput: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2d3748',
-    textAlign: 'right',
-    minWidth: 120,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e2e8f0',
-  },
-  dividerArrow: {
-    width: 24,
-    height: 24,
-    marginHorizontal: 8,
-    tintColor: '#a0aec0',
-  },
-  summaryContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  summaryHeader: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2d3748',
-    marginBottom: 12,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#718096',
-  },
-  summaryValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4a5568',
-  },
-  totalRow: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#edf2f7',
-  },
-  totalLabel: {
-    fontWeight: 'bold',
-    color: '#2d3748',
-  },
-  totalValue: {
-    fontWeight: 'bold',
-    color: '#2d3748',
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#f7fafc',
-    borderRadius: 8,
-  },
-  switchText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 14,
-    color: '#4a5568',
-  },
-  continueButton: {
-    backgroundColor: '#4299e1',
-    padding: 16,
-    borderRadius: 8,
+  backButton: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
+    borderRadius: 18,
+    backgroundColor: '#F7F8FA',
+    marginBottom: 20,
   },
-  disabledButton: {
-    backgroundColor: '#cbd5e0',
+  screenLabel: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginBottom: 8,
   },
-  loadingButton: {
-    opacity: 0.7,
+  title: {
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 24,
   },
-  continueButtonText: {
-    color: 'white',
+  amountStack: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  primaryReceiveCard: {
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+    marginBottom: 16,
+  },
+  primaryReceiveContent: {
+    width: '100%',
+  },
+  primaryReceiveLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  primaryReceiveAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  primaryReceiveInput: {
+    flex: 1,
+    padding: 0,
+    fontSize: 31,
+    lineHeight: 35,
+    fontWeight: '800',
+    color: '#0A7A42',
+  },
+  primaryReceiveCurrencyBadge: {
+    minWidth: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: '#E8F7EE',
+  },
+  primaryReceiveCurrency: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  amountCard: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  amountCardCompact: {
+    borderRadius: 20,
+  },
+  amountCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  amountLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  amountHint: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '600',
+  },
+  amountInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  amountInput: {
+    flex: 1,
+    padding: 0,
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  amountInputCompact: {
+    fontSize: 34,
+  },
+  currencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 8,
+  },
+  currencyCode: {
+    fontSize: 18,
+    color: '#111827',
+    fontWeight: '700',
+  },
+  flagBox: {
+    width: 24,
+    height: 18,
+    borderRadius: 4,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flagNorway: {
+    backgroundColor: '#ED3943',
+  },
+  flagNorwayVertical: {
+    position: 'absolute',
+    left: 6,
+    width: 5,
+    height: '100%',
+    backgroundColor: '#1E4D99',
+    borderLeftWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  flagNorwayHorizontal: {
+    position: 'absolute',
+    top: 6,
+    width: '100%',
+    height: 4,
+    backgroundColor: '#1E4D99',
+    borderTopWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  flagSomalia: {
+    backgroundColor: '#3B86DA',
+  },
+  flagDefault: {
+    backgroundColor: '#D7E7F8',
+  },
+  flagText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#21507C',
+  },
+  footer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 8,
+  },
+  summaryPanel: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    gap: 14,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  costRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  costLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  costValue: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
+  },
+  totalLabel: {
+    fontSize: 18,
+    color: '#111827',
+    fontWeight: '700',
+  },
+  totalValue: {
+    fontSize: 22,
+    color: '#111827',
+    fontWeight: '800',
+  },
+  nextButton: {
+    width: '100%',
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563EB',
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  nextButtonDisabled: {
+    backgroundColor: '#93C5FD',
+  },
+  nextButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

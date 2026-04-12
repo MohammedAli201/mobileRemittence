@@ -1,563 +1,619 @@
-
-
-
-// import { Ionicons } from '@expo/vector-icons';
-// import { useNavigation } from '@react-navigation/native';
-// import { useLocalSearchParams } from 'expo-router';
-// import React, { useEffect, useState } from 'react';
-// import {
-//   FlatList,
-//   Image,
-//   Modal,
-//   SafeAreaView,
-//   ScrollView,
-//   StyleSheet,
-//   Text,
-//   TouchableOpacity,
-//   View
-// } from 'react-native';
-// import { useTransaction } from '../../context/TransactionContext';
-
-// const reasons = [
-//   'Family Support',
-//   'Friends',
-//   'Health',
-//   'Education',
-//   'Business',
-//   'Gift',
-//   'Other'
-// ];
-
-// const getRandomColor = () => {
-//   const colors = ['#FF5733', '#33FF57', '#3357FF', '#F333FF', '#33FFF5'];
-//   return colors[Math.floor(Math.random() * colors.length)];
-// };
-
-// const AgreeAndPayScreen = () => {
-//   const navigation = useNavigation();
-//   const { recipient: recipientRaw, trans: transRaw } = useLocalSearchParams();
-//   const { transactionData, updateTransaction } = useTransaction();
-// console.log("transaction data is",transactionData)
-//   const recipient = recipientRaw ? JSON.parse(recipientRaw) : {};
-//   const trans = transRaw ? JSON.parse(transRaw) : {};
-  
-//   const [showModal, setShowModal] = useState(false);
-//   const [selectedReason, setSelectedReason] = useState(trans.reason || '');
-
-//   const handleContinue = () => {
-//     // Update transaction with selected reason before navigating
-//     updateTransaction({
-//       ...transactionData,
-//       reason: selectedReason
-//     });
-//     navigation.navigate('PaymentProcessing');
-//   };
-
-//   const handleSelectReason = (reason) => {
-//     setSelectedReason(reason);
-//     setShowModal(false);
-//   };
-
-//   useEffect(() => {
-//     if (!trans || !recipient) return;
-
-//     const updatedTransaction = {
-//       ...transactionData,
-//       recipient: recipient,
-//       reason: trans.reason || '',
-//       // sendAmount: trans.sendAmount || 0,
-//       // receiveAmount: trans.receiveAmount || 0,
-//       // fee: trans.fee || 0,
-//       // totalToPay: trans.totalToPay || 0,
-//       // receivingMethod: trans.receivingMethod || 'Hormuud EVC'
-//     };
-
-//     updateTransaction(updatedTransaction);
-//   }, []);
-
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-//         <Text style={styles.header}>Select Reason</Text>
-
-//         <View style={styles.card}>
-//           <View style={styles.rowCard}>
-//             <Image source={{ uri: 'https://flagcdn.com/w80/no.png' }} style={styles.flag} />
-//             <View>
-//               <Text style={styles.currency}>NOK</Text>
-//               <Text style={styles.country}>Norway</Text>
-//             </View>
-//             <View style={styles.flexEnd}>
-//               <Text style={styles.label}>You Send</Text>
-//               <Text style={styles.amount}>{transactionData.sendAmount?.toFixed(2) || '0.00'}</Text>
-//             </View>
-//           </View>
-
-//           <View style={styles.rowCard}>
-//             <Image source={{ uri: 'https://flagcdn.com/w80/so.png' }} style={styles.flag} />
-//             <View>
-//               <Text style={styles.currency}>USD</Text>
-//               <Text style={styles.country}>Somalia</Text>
-//             </View>
-//             <View style={styles.flexEnd}>
-//               <Text style={styles.label}>They Receive</Text>
-//               <Text style={styles.amount}>{transactionData.receiveAmount?.toFixed(2) || '0.00'}</Text>
-//             </View>
-//           </View>
-
-//           <View style={styles.infoBox}>
-//             <Text style={styles.infoLabel}>Receiving Method</Text>
-//             <Text style={styles.infoText}>{trans.receivingMethod || 'Hormuud EVC'}</Text>
-//           </View>
-
-//           <View style={styles.infoBox}>
-//             <Text style={styles.infoLabel}>Selected Recipient</Text>
-//             <Text style={styles.infoText}>
-//               {recipient.name || 'No recipient selected'} - {recipient.phone || 'No phone number'}
-//             </Text>
-//           </View>
-
-//           <TouchableOpacity style={styles.infoBox} onPress={() => setShowModal(true)}>
-//             <Text style={styles.infoLabel}>Reason For Sending</Text>
-//             <View style={styles.dropdownRow}>
-//               <Text style={styles.infoText}>{selectedReason || 'Select a reason'}</Text>
-//               <Ionicons name="chevron-down" size={18} color="#6B7280" />
-//             </View>
-//           </TouchableOpacity>
-//         </View>
-
-//         <View style={styles.paymentSection}>
-//           <View style={styles.totalRow}>
-//             <Text style={styles.totalLabel}>Total To Pay</Text>
-//             <Ionicons name="chevron-up" size={18} color="#555" />
-//             <Text style={styles.totalAmount}>NOK {transactionData.totalAmount?.toFixed(2) || '0.00'}</Text>
-//           </View>
-//           <TouchableOpacity
-//             style={[styles.continueButton, !selectedReason && styles.disabledButton]}
-//             onPress={handleContinue}
-//             disabled={!selectedReason}
-//           >
-//             <Text style={styles.continueText}>Continue To Pay</Text>
-//           </TouchableOpacity>
-//         </View>
-//       </ScrollView>
-
-//       <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
-//         <View style={styles.modalOverlay}>
-//           <View style={styles.modalCard}>
-//             <View style={styles.modalHeader}>
-//               <Text style={styles.modalTitle}>Select Reason</Text>
-//               <TouchableOpacity onPress={() => setShowModal(false)}>
-//                 <Ionicons name="close" size={24} color="#6B7280" />
-//               </TouchableOpacity>
-//             </View>
-
-//             <FlatList
-//               data={reasons}
-//               keyExtractor={(item) => item}
-//               renderItem={({ item }) => (
-//                 <TouchableOpacity
-//                   style={[styles.reasonItem, selectedReason === item && styles.selectedReasonItem]}
-//                   onPress={() => handleSelectReason(item)}
-//                 >
-//                   <Text style={[styles.reasonText, selectedReason === item && styles.selectedReasonText]}>
-//                     {item}
-//                   </Text>
-//                   {selectedReason === item && <Ionicons name="checkmark-circle" size={20} color="#7C3AED" />}
-//                 </TouchableOpacity>
-//               )}
-//               ItemSeparatorComponent={() => <View style={styles.separator} />}
-//             />
-//           </View>
-//         </View>
-//       </Modal>
-//     </SafeAreaView>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#F9FAFB' },
-//   scrollContent: { paddingBottom: 20 },
-//   header: { fontSize: 22, fontWeight: '600', textAlign: 'center', padding: 16 },
-//   card: { 
-//     marginHorizontal: 16, 
-//     backgroundColor: '#fff', 
-//     borderRadius: 16, 
-//     padding: 16,
-//     marginBottom: 20
-//   },
-//   rowCard: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     justifyContent: 'space-between',
-//     backgroundColor: '#fff',
-//     borderRadius: 12,
-//     padding: 12,
-//     marginBottom: 10,
-//     borderWidth: 1,
-//     borderColor: '#eee'
-//   },
-//   flag: { width: 32, height: 24, marginRight: 10, borderRadius: 4 },
-//   currency: { fontSize: 16, fontWeight: '700' },
-//   country: { fontSize: 13, color: '#6B7280' },
-//   flexEnd: { alignItems: 'flex-end' },
-//   label: { fontSize: 13, color: '#6B7280' },
-//   amount: { fontSize: 20, fontWeight: '700' },
-//   infoBox: {
-//     backgroundColor: '#fff',
-//     borderRadius: 12,
-//     padding: 12,
-//     marginBottom: 10,
-//     borderWidth: 1,
-//     borderColor: '#eee',
-//   },
-//   infoLabel: { fontSize: 13, color: '#6B7280', marginBottom: 4 },
-//   infoText: { fontSize: 16, color: '#111827' },
-//   dropdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-//   paymentSection: {
-//     backgroundColor: '#fff',
-//     padding: 16,
-//     marginHorizontal: 16,
-//     borderRadius: 16,
-//     marginBottom: 20,
-//   },
-//   totalRow: {
-//     backgroundColor: '#E0F2FE',
-//     borderRadius: 12,
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     alignItems: 'center',
-//     padding: 14,
-//     marginBottom: 12,
-//     borderWidth: 1,
-//     borderColor: '#7DD3FC'
-//   },
-//   totalLabel: { fontSize: 16, color: '#374151' },
-//   totalAmount: { fontSize: 18, fontWeight: '700', color: '#2563EB' },
-//   continueButton: {
-//     backgroundColor: '#3B82F6',
-//     paddingVertical: 16,
-//     borderRadius: 30,
-//     alignItems: 'center',
-//   },
-//   continueText: { color: '#fff', fontSize: 19, fontWeight: '900' },
-//   disabledButton: { backgroundColor: '#9CA3AF' },
-//   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center' },
-//   modalCard: { backgroundColor: '#fff', borderRadius: 16, margin: 20, maxHeight: '60%' },
-//   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-//   modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-//   reasonItem: { padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-//   selectedReasonItem: { backgroundColor: '#EEF2FF' },
-//   reasonText: { fontSize: 16, color: '#111827' },
-//   selectedReasonText: { color: '#4F46E5', fontWeight: '600' },
-//   separator: { height: 1, backgroundColor: '#F3F4F6', marginHorizontal: 16 },
-// });
-
-// export default AgreeAndPayScreen;
-
-
-
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import flagMap from '../flagMap';
-
-
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  FlatList,
-  Image,
-  Modal,
-  Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import { useTransaction } from '../../context/TransactionContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getTransferDraft, mergeTransferDraft } from '../../services/transferDraft';
 
-const reasons = [
-  'Family Support',
-  'Friends',
-  'Health',
-  'Education',
-  'Business',
-  'Gift',
-  'Other'
-];
+const reasons = ['Family support', 'Friends', 'Education', 'Medical', 'Business', 'Gift', 'Other'];
 
-const getRandomColor = () => {
-  const colors = ['#FF5733', '#33FF57', '#3357FF', '#F333FF', '#33FFF5'];
-  return colors[Math.floor(Math.random() * colors.length)];
-};
-// Country to flag mapping utility
-const countryCodeMap: Record<string, string> = {
-  'norway': 'no',
-  'somalia': 'so',
-  'kenya': 'ke',
-  'uganda': 'ug',
-  'tanzania': 'tz',
-  'ethiopia': 'et',
-  'djibouti': 'dj',
- 
-  // Add more countries as needed
+const getParamValue = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
+const parseJsonParam = <T,>(value: string | undefined, fallback: T): T => {
+  if (!value) return fallback;
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 };
 
-const getFlagForCountry = (countryName: string) => {
-  if (!countryName) return flagMap.us;
-  
-  const lowerCaseCountry = countryName.toLowerCase();
-  const countryCode = countryCodeMap[lowerCaseCountry] || 'us';
-  return flagMap[countryCode] || flagMap.us;
+type RouteRecipient = {
+  id?: string;
+  name?: string;
+  phone?: string;
+  relationship?: string;
+  provider?: string;
+  countryOfCitizenship?: string;
+  address?: string;
+  city?: string;
+  service?: string;
 };
 
-const AgreeAndPayScreen = () => {
-  const router = useRouter()
-  const navigation = useNavigation();
+type RouteTransaction = {
+  reason?: string;
+};
+
+const splitRecipientName = (name?: string) => {
+  const trimmedName = name?.trim() ?? '';
+  if (!trimmedName) {
+    return { firstName: '', lastName: '' };
+  }
+
+  const [firstName, ...rest] = trimmedName.split(/\s+/);
+  return {
+    firstName,
+    lastName: rest.join(' '),
+  };
+};
+
+const formatAmount = (amount: number) => Number(amount || 0).toFixed(2).replace('.', ',');
+
+export default function AgreeAndPayScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { recipient: recipientRaw, trans: transRaw } = useLocalSearchParams();
-  const { transactionData, updateTransaction } = useTransaction();
-const fromFlag = getFlagForCountry(transactionData.sendCountry);
-  const toFlag = getFlagForCountry(transactionData.receivingCountry);
-  const recipient = recipientRaw ? JSON.parse(recipientRaw) : {};
-  const trans = transRaw ? JSON.parse(transRaw) : {};
-  
-  const [showModal, setShowModal] = useState(false);
-  const [selectedReason, setSelectedReason] = useState(trans.reason || '');
+  const transactionData = getTransferDraft();
+
+  const recipientParam = getParamValue(recipientRaw);
+  const transParam = getParamValue(transRaw);
+  const recipient = parseJsonParam<RouteRecipient>(recipientParam, {});
+  const trans = parseJsonParam<RouteTransaction>(transParam, {});
+  const [selectedReason, setSelectedReason] = useState(trans.reason || transactionData.reason || 'Family support');
+  const [reasonMenuOpen, setReasonMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!recipientParam) return;
+
+    const { firstName, lastName } = splitRecipientName(recipient.name);
+
+    mergeTransferDraft({
+      recipient: {
+        id: recipient.id,
+        firstName,
+        lastName,
+        phoneNumber: recipient.phone || '',
+        relationshipToSender: recipient.relationship || '',
+        avatarColor: transactionData.recipient.avatarColor || '#2B6CB0',
+        countryOfCitizenship: recipient.countryOfCitizenship || transactionData.recipient.countryOfCitizenship || '',
+        address: recipient.address || transactionData.recipient.address || '',
+        city: recipient.city || transactionData.recipient.city || '',
+        service: recipient.service || transactionData.recipient.service || '',
+      },
+      reason: trans.reason || transactionData.reason || 'Family support',
+      provider: recipient.provider || transactionData.provider || '',
+    });
+  }, [
+    recipient.id,
+    recipient.name,
+    recipient.phone,
+    recipient.provider,
+    recipient.relationship,
+    recipientParam,
+    trans.reason,
+    transactionData.provider,
+    transactionData.reason,
+    transactionData.recipient.avatarColor,
+  ]);
+
+  const recipientName = useMemo(
+    () => recipient.name || [transactionData.recipient.firstName, transactionData.recipient.lastName].filter(Boolean).join(' '),
+    [recipient.name, transactionData.recipient.firstName, transactionData.recipient.lastName]
+  );
+
+  const sendCountry = transactionData.sendCountry || 'Norway';
+  const receiveCountry = transactionData.receivingCountry || 'Somalia';
+  const sendCurrency = transactionData.sendCurrency || 'NOK';
+  const receiveCurrency = transactionData.receiveCurrency || 'USD';
+  const receivingMethod = transactionData.provider || transactionData.service || recipient.provider || 'Premier Wallet';
+  const recipientPhone = recipient.phone || transactionData.recipient.phoneNumber || '';
 
   const handleContinue = () => {
-    updateTransaction({
-      ...transactionData,
-      reason: selectedReason
+    mergeTransferDraft({
+      reason: selectedReason,
     });
+
     router.push('/transaction/PaymentMethodScreen');
   };
 
-  const handleSelectReason = (reason) => {
-    setSelectedReason(reason);
-    setShowModal(false);
-  };
-
-  useEffect(() => {
-    if (!trans || !recipient) return;
-
-    const updatedTransaction = {
-      ...transactionData,
-      recipient: recipient,
-      reason: trans.reason || '',
-    };
-
-    updateTransaction(updatedTransaction);
-  }, []);
-
   return (
-    <>
-      <StatusBar 
-        backgroundColor="transparent" 
-        translucent 
-        barStyle="dark-content" 
-      />
-      <SafeAreaView style={styles.container}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
-          showsVerticalScrollIndicator={false}
-          contentInsetAdjustmentBehavior="automatic"
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.85}>
+          <Ionicons name="close" size={20} color="#2B2B2B" />
+        </TouchableOpacity>
+
+        <Text style={styles.screenLabel}>Sending to {receiveCountry}</Text>
+        <Text style={styles.screenTitle}>Agree & Pay</Text>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 88 + Math.max(insets.bottom, 8) }]}
+          showsVerticalScrollIndicator={reasonMenuOpen}
+          scrollEnabled={reasonMenuOpen}
         >
-          <Text style={styles.header}>Select Reason</Text>
-
-          <View style={styles.card}>
-            <View style={styles.rowCard}>
-              <Image source={fromFlag} style={styles.flag} />
-              <View>
-                <Text style={styles.currency}>{transactionData.sendCurrency}</Text>
-                <Text style={styles.country}>{transactionData.sendCountry}</Text>
-              </View>
-              <View style={styles.flexEnd}>
-                <Text style={styles.label}>You Send</Text>
-                <Text style={styles.amount}>{transactionData.sendAmount?.toFixed(2) || '0.00'}</Text>
+          <View style={styles.primaryReceiveCard}>
+            <View style={styles.primaryReceiveContent}>
+              <Text style={styles.primaryReceiveLabel}>They get</Text>
+              <View style={styles.primaryReceiveAmountRow}>
+                <Text style={styles.primaryReceiveValue}>{formatAmount(transactionData.receiveAmount)}</Text>
+                <View style={styles.primaryReceiveCurrencyBadge}>
+                  <CountryBadge country={receiveCountry} />
+                  <Text style={styles.primaryReceiveCurrency}>{receiveCurrency}</Text>
+                </View>
               </View>
             </View>
-
-            <View style={styles.rowCard}>
-              <Image source={ toFlag} style={styles.flag} />
-              <View>
-                <Text style={styles.currency}>{transactionData.receiveCurrency}</Text>
-                <Text style={styles.country}>{transactionData.receivingCountry}</Text>
-              </View>
-              <View style={styles.flexEnd}>
-                <Text style={styles.label}>They Receive</Text>
-                <Text style={styles.amount}>{transactionData.receiveAmount?.toFixed(2) || '0.00'}</Text>
-              </View>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Receiving Method</Text>
-              <Text style={styles.infoText}>{transactionData.provider }</Text>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Selected Recipient</Text>
-              <Text style={styles.infoText}>
-                {recipient.name || 'No recipient selected'} - {recipient.phone || 'No phone number'}
-              </Text>
-            </View>
-
-            <TouchableOpacity style={styles.infoBox} onPress={() => setShowModal(true)}>
-              <Text style={styles.infoLabel}>Reason For Sending</Text>
-              <View style={styles.dropdownRow}>
-                <Text style={styles.infoText}>{selectedReason || 'Select a reason'}</Text>
-                <Ionicons name="chevron-down" size={18} color="#6B7280" />
-              </View>
-            </TouchableOpacity>
           </View>
 
-          <View style={styles.paymentSection}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total To Pay</Text>
-              <Ionicons name="chevron-up" size={18} color="#555" />
-              <Text style={styles.totalAmount}>NOK {transactionData.totalAmount?.toFixed(2) || '0.00'}</Text>
+          <View style={styles.amountStack}>
+            <AmountCard
+              country={sendCountry}
+              currency={sendCurrency}
+              label="You send"
+              amount={formatAmount(transactionData.sendAmount)}
+            />
+          </View>
+
+          <View style={styles.reviewCard}>
+            <View style={styles.reviewBlock}>
+              <Text style={styles.reviewBlockLabel}>Recipient</Text>
+              <View style={styles.reviewValueWrap}>
+                <View style={styles.personBadge}>
+                  <Text style={styles.personBadgeText}>
+                    {(recipientName || 'R').slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={styles.reviewValueStrong}>{recipientName || 'No recipient selected'}</Text>
+              </View>
             </View>
-            <TouchableOpacity
-              style={[styles.continueButton, !selectedReason && styles.disabledButton]}
-              onPress={handleContinue}
-              disabled={!selectedReason}
-            >
-              <Text style={styles.continueText}>Continue To Pay</Text>
-            </TouchableOpacity>
+
+            <View style={styles.reviewDivider} />
+
+            <View style={styles.reviewBlock}>
+              <Text style={styles.reviewBlockLabel}>Delivery method</Text>
+              <View style={styles.reviewValueWrap}>
+                <Ionicons name="card-outline" size={14} color="#8F8F8F" />
+                <Text style={styles.reviewValueStrong}>{receivingMethod}</Text>
+              </View>
+            </View>
+
+            <View style={styles.reviewDivider} />
+
+            <View style={styles.reviewGrid}>
+              <View style={styles.reviewBlock}>
+                <Text style={styles.reviewBlockLabel}>Phone</Text>
+                <Text style={styles.reviewValuePlain}>{recipientPhone || 'No phone number'}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.reasonCard, reasonMenuOpen && styles.reasonCardOpen]}
+                onPress={() => setReasonMenuOpen((current) => !current)}
+                activeOpacity={0.9}
+              >
+                <View style={styles.reasonCardTop}>
+                  <Text style={styles.reviewBlockLabel}>Reason</Text>
+                  <Ionicons name={reasonMenuOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#94A3B8" />
+                </View>
+                <Text style={styles.reviewValueStrong}>{selectedReason}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {reasonMenuOpen ? (
+              <View style={styles.dropdownCard}>
+                {reasons.map((reason) => {
+                  const active = reason === selectedReason;
+                  return (
+                    <Pressable
+                      key={reason}
+                      style={[styles.dropdownItem, active && styles.dropdownItemActive]}
+                      onPress={() => {
+                        setSelectedReason(reason);
+                        setReasonMenuOpen(false);
+                      }}
+                    >
+                      <Text style={[styles.dropdownItemText, active && styles.dropdownItemTextActive]}>{reason}</Text>
+                      {active ? <Ionicons name="checkmark" size={18} color="#BF8451" /> : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
           </View>
         </ScrollView>
 
-        <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
-          <StatusBar backgroundColor="rgba(0,0,0,0.5)" />
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Reason</Text>
-                <TouchableOpacity onPress={() => setShowModal(false)}>
-                  <Ionicons name="close" size={24} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-
-              <FlatList
-                data={reasons}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[styles.reasonItem, selectedReason === item && styles.selectedReasonItem]}
-                    onPress={() => handleSelectReason(item)}
-                  >
-                    <Text style={[styles.reasonText, selectedReason === item && styles.selectedReasonText]}>
-                      {item}
-                    </Text>
-                    {selectedReason === item && <Ionicons name="checkmark-circle" size={20} color="#7C3AED" />}
-                  </TouchableOpacity>
-                )}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-              />
-            </View>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
+          <View style={styles.totalCard}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>
+              {formatAmount(transactionData.totalAmount)} {sendCurrency}
+            </Text>
           </View>
-        </Modal>
-      </SafeAreaView>
-    </>
+
+          <TouchableOpacity style={styles.continueButton} onPress={handleContinue} activeOpacity={0.9}>
+            <Text style={styles.continueText}>Confirm & Pay</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
   );
-};
+}
+
+function AmountCard({
+  country,
+  currency,
+  label,
+  amount,
+}: {
+  country: string;
+  currency: string;
+  label: string;
+  amount: string;
+}) {
+  return (
+    <View style={styles.amountCard}>
+      <Text style={styles.amountCardLabel}>{label}</Text>
+      <View style={styles.amountCardRow}>
+        <Text style={styles.amountCardValue}>{amount}</Text>
+        <View style={styles.currencyWrap}>
+          <CountryBadge country={country} />
+          <Text style={styles.currencyWrapText}>{currency}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function CountryBadge({ country }: { country: string }) {
+  if (country === 'Norway' || country === 'NO') {
+    return (
+      <View style={[styles.flagBox, styles.flagNorway]}>
+        <View style={styles.flagNorwayVertical} />
+        <View style={styles.flagNorwayHorizontal} />
+      </View>
+    );
+  }
+
+  if (country === 'Somalia' || country === 'SO') {
+    return (
+      <View style={[styles.flagBox, styles.flagSomalia]}>
+        <Ionicons name="star" size={9} color="#FFFFFF" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.flagBox, styles.flagDefault]}>
+      <Text style={styles.flagText}>{country.slice(0, 2).toUpperCase()}</Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F9FAFB',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  scrollContent: { 
-    paddingBottom: 20,
-    paddingTop: 10 
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
   },
-  header: { 
-    fontSize: 22, 
-    fontWeight: '600', 
-    textAlign: 'center', 
-    padding: 16,
-    marginTop: 10 
-  },
-  card: { 
-    marginHorizontal: 16, 
-    backgroundColor: '#fff', 
-    borderRadius: 16, 
-    padding: 16,
-    marginBottom: 20
-  },
-  rowCard: {
-    flexDirection: 'row',
+  backButton: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#eee'
-  },
-  flag: { width: 32, height: 24, marginRight: 10, borderRadius: 4 },
-  currency: { fontSize: 16, fontWeight: '700' },
-  country: { fontSize: 13, color: '#6B7280' },
-  flexEnd: { alignItems: 'flex-end' },
-  label: { fontSize: 13, color: '#6B7280' },
-  amount: { fontSize: 20, fontWeight: '700' },
-  infoBox: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  infoLabel: { fontSize: 13, color: '#6B7280', marginBottom: 4 },
-  infoText: { fontSize: 16, color: '#111827' },
-  dropdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  paymentSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    marginHorizontal: 16,
-    borderRadius: 16,
-    marginBottom: 20,
-  },
-  totalRow: {
-    backgroundColor: '#E0F2FE',
-    borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#7DD3FC'
-  },
-  totalLabel: { fontSize: 16, color: '#374151' },
-  totalAmount: { fontSize: 18, fontWeight: '700', color: '#2563EB' },
-  continueButton: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 16,
-    borderRadius: 30,
-    alignItems: 'center',
-  },
-  continueText: { color: '#fff', fontSize: 19, fontWeight: '900' },
-  disabledButton: { backgroundColor: '#9CA3AF' },
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
     justifyContent: 'center',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 
+    borderRadius: 18,
+    backgroundColor: '#F7F8FA',
+    marginBottom: 12,
   },
-  modalCard: { backgroundColor: '#fff', borderRadius: 16, margin: 20, maxHeight: '60%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  reasonItem: { padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  selectedReasonItem: { backgroundColor: '#EEF2FF' },
-  reasonText: { fontSize: 16, color: '#111827' },
-  selectedReasonText: { color: '#4F46E5', fontWeight: '600' },
-  separator: { height: 1, backgroundColor: '#F3F4F6', marginHorizontal: 16 },
+  screenLabel: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  screenTitle: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    gap: 12,
+  },
+  amountStack: {
+    gap: 12,
+  },
+  primaryReceiveCard: {
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  primaryReceiveContent: {
+    width: '100%',
+  },
+  primaryReceiveLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  primaryReceiveAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  primaryReceiveValue: {
+    flex: 1,
+    fontSize: 31,
+    lineHeight: 35,
+    fontWeight: '800',
+    color: '#0A7A42',
+  },
+  primaryReceiveCurrencyBadge: {
+    minWidth: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: '#E8F7EE',
+  },
+  primaryReceiveCurrency: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  amountCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  amountCardLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  amountCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  amountCardValue: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  currencyWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  currencyWrapText: {
+    fontSize: 18,
+    color: '#111827',
+    fontWeight: '700',
+  },
+  flagBox: {
+    width: 24,
+    height: 18,
+    borderRadius: 4,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flagNorway: {
+    backgroundColor: '#ED3943',
+  },
+  flagNorwayVertical: {
+    position: 'absolute',
+    left: 6,
+    width: 5,
+    height: '100%',
+    backgroundColor: '#1E4D99',
+    borderLeftWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  flagNorwayHorizontal: {
+    position: 'absolute',
+    top: 6,
+    width: '100%',
+    height: 4,
+    backgroundColor: '#1E4D99',
+    borderTopWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  flagSomalia: {
+    backgroundColor: '#3B86DA',
+  },
+  flagDefault: {
+    backgroundColor: '#D7E7F8',
+  },
+  flagText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#21507C',
+  },
+  reviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    gap: 12,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  reviewBlock: {
+    gap: 8,
+  },
+  reviewBlockLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  reviewValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reviewValueStrong: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    flexShrink: 1,
+  },
+  reviewValuePlain: {
+    fontSize: 15,
+    color: '#374151',
+  },
+  personBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E5ECF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  personBadgeText: {
+    fontSize: 12,
+    color: '#35517A',
+    fontWeight: '600',
+  },
+  reviewDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  reviewGrid: {
+    gap: 10,
+  },
+  reasonCard: {
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  reasonCardOpen: {
+    borderColor: '#BFDBFE',
+  },
+  reasonCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownCard: {
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2F7',
+  },
+  dropdownItemActive: {
+    backgroundColor: '#EFF6FF',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  dropdownItemTextActive: {
+    color: '#2563EB',
+    fontWeight: '600',
+  },
+  footer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 0,
+    paddingTop: 8,
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  totalCard: {
+    minHeight: 58,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  totalLabel: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  totalValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  continueButton: {
+    height: 52,
+    borderRadius: 28,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  continueText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
 });
-
-export default AgreeAndPayScreen;

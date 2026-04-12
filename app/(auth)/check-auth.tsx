@@ -1,37 +1,48 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
+import { ActivityIndicator, SafeAreaView, StyleSheet } from 'react-native';
+import { fintechColors } from '../../components/ui/fintech';
 import { useUser } from '../../context/UserContext';
 import AuthService from '../../services/AuthHelpers';
 
 export default function CheckAuthScreen() {
   const router = useRouter();
-  const { user } = useUser(); // user.id is required for checking PIN
+  const { user, isLoading } = useUser();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    if (isLoading) return;
+
+    const routeUser = async () => {
+      const pinExists = await AuthService.pinExists();
+
       if (!user?.id) {
         router.replace('/(auth)/login');
-        // await AsyncStorage.setItem('hasQuickLogin', 'true');
-
         return;
       }
-      Alert.alert('Login Failed', user.id);
 
-const pinExists = await AuthService.pinExists();
       if (pinExists) {
-        router.replace('/(auth)/authenticate');
-      } else {
-        router.replace('/(auth)/setup-pin'); // 👈 required setup path
+        router.replace('/(auth)/pin-entry');
+        return;
       }
+
+      router.replace('/(auth)/enable-quick-login');
     };
 
-    checkAuth();
-  }, [user]);
+    routeUser();
+  }, [isLoading, router, user?.id]);
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator size="large" />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <ActivityIndicator size="large" color={fintechColors.primary} />
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: fintechColors.background,
+  },
+});
