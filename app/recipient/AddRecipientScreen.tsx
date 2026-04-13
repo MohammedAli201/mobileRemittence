@@ -3,10 +3,6 @@ import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,22 +10,36 @@ import {
 } from "react-native";
 import {
   FintechPrimaryButton,
+  FintechProgress,
+  FintechScreenHeader,
+  FintechSectionCard,
+  FintechStatusPill,
+  FintechStickyActionArea,
   FintechTextField,
   fintechColors,
+  fintechSpacing,
 } from "../../components/ui/fintech";
+import { KeyboardScrollScreen } from "../../components/ui/layout";
 import { RecipientService } from "../../services/apiClient";
 import {
   createRecipientApiPayload,
   createRecipientProfile,
   getCountryNameFromCode,
+  normalizeCountryCode,
 } from "../../services/remittance";
-import { getTransferDraft, mergeTransferDraft } from "../../services/transferDraft";
+import {
+  getTransferDraft,
+  mergeTransferDraft,
+} from "../../services/transferDraft";
 
 export default function AddRecipientScreen() {
   const router = useRouter();
   const transactionData = getTransferDraft();
   const initialCountryName = useMemo(
-    () => getCountryNameFromCode(transactionData.receivingCountry || "SO").toUpperCase(),
+    () =>
+      getCountryNameFromCode(
+        transactionData.receivingCountry || "SO",
+      ).toUpperCase(),
     [transactionData.receivingCountry],
   );
 
@@ -37,7 +47,8 @@ export default function AddRecipientScreen() {
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [receivingCountry, setReceivingCountry] = useState(initialCountryName);
-  const [countryOfCitizenship, setCountryOfCitizenship] = useState(initialCountryName);
+  const [countryOfCitizenship, setCountryOfCitizenship] =
+    useState(initialCountryName);
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [relationship, setRelationship] = useState(
@@ -65,8 +76,8 @@ export default function AddRecipientScreen() {
       firstName,
       lastName,
       phoneNumber,
-      receivingCountry,
-      countryOfCitizenship,
+      receivingCountry: normalizeCountryCode(receivingCountry),
+      countryOfCitizenship: normalizeCountryCode(countryOfCitizenship),
       address,
       city,
       relationshipToSender: relationship,
@@ -76,16 +87,13 @@ export default function AddRecipientScreen() {
 
     setLoading(true);
     try {
-      await RecipientService.addRecipient(createRecipientApiPayload(recipientProfile));
-
+      await RecipientService.addRecipient(
+        createRecipientApiPayload(recipientProfile),
+      );
       mergeTransferDraft({
         receivingCountry: recipientProfile.receivingCountry,
-        recipient: {
-          ...recipientProfile,
-          avatarColor: "#2B6CB0",
-        },
+        recipient: { ...recipientProfile, avatarColor: "#2B6CB0" },
       });
-
       router.replace({
         pathname: "/transaction/AgreeAndPayScreen",
         params: {
@@ -117,194 +125,151 @@ export default function AddRecipientScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.flex}
+    <KeyboardScrollScreen contentStyle={styles.container}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+        activeOpacity={0.85}
       >
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} activeOpacity={0.85}>
-              <Ionicons name="chevron-back" size={18} color="#A0A7B4" />
-            </TouchableOpacity>
-            <Text style={styles.screenTitle}>Add Recipient</Text>
-            <View style={styles.iconButtonPlaceholder} />
-          </View>
+        <Ionicons
+          name="chevron-back"
+          size={18}
+          color={fintechColors.text}
+        />
+      </TouchableOpacity>
 
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.contextCard}>
-              <Text style={styles.contextLabel}>Sending to</Text>
-              <Text style={styles.contextValue}>
-                {getCountryNameFromCode(transactionData.receivingCountry || "SO")}
-              </Text>
-              <Text style={styles.contextMeta}>{transactionData.provider || "Provider selected earlier"}</Text>
-            </View>
+      <FintechProgress
+        step={4}
+        total={6}
+        label="Add recipient"
+        style={styles.progress}
+      />
+      <FintechScreenHeader
+        eyebrow="New recipient"
+        title="Add recipient details"
+        subtitle="Use the recipient details exactly as provided."
+      />
 
-            <View style={styles.formCard}>
-              <View style={styles.form}>
-                <FintechTextField
-                  label="First name"
-                  icon="person-outline"
-                  placeholder="SHUKRI"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  autoCapitalize="characters"
-                />
-                <FintechTextField
-                  label="Last name"
-                  icon="person-outline"
-                  placeholder="AHMED"
-                  value={lastName}
-                  onChangeText={setLastName}
-                  autoCapitalize="characters"
-                />
-                <FintechTextField
-                  label="Phone number"
-                  icon="call-outline"
-                  placeholder="+252615738865"
-                  keyboardType="phone-pad"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                />
-                <FintechTextField
-                  label="Receiving country"
-                  icon="flag-outline"
-                  placeholder="SOMALIA"
-                  value={receivingCountry}
-                  onChangeText={setReceivingCountry}
-                  autoCapitalize="characters"
-                />
-                <FintechTextField
-                  label="Country of citizenship"
-                  icon="globe-outline"
-                  placeholder="SOMALIA"
-                  value={countryOfCitizenship}
-                  onChangeText={setCountryOfCitizenship}
-                  autoCapitalize="characters"
-                />
-                <FintechTextField
-                  label="Address"
-                  icon="home-outline"
-                  placeholder="Tonstadgrenda 113A"
-                  value={address}
-                  onChangeText={setAddress}
-                />
-                <FintechTextField
-                  label="City"
-                  icon="business-outline"
-                  placeholder="Trondheim"
-                  value={city}
-                  onChangeText={setCity}
-                />
-                <FintechTextField
-                  label="Relationship"
-                  icon="people-outline"
-                  placeholder="Spouse"
-                  value={relationship}
-                  onChangeText={setRelationship}
-                />
-              </View>
-            </View>
-
-            <View style={styles.actions}>
-              <FintechPrimaryButton onPress={handleSaveRecipient} loading={loading} disabled={loading}>
-                Save and continue
-              </FintechPrimaryButton>
-            </View>
-          </ScrollView>
+      <FintechSectionCard style={styles.contextCard}>
+        <View style={styles.contextTop}>
+          <FintechStatusPill
+            icon="shield-checkmark-outline"
+            label="Secure recipient storage"
+            tone="info"
+          />
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        <Text style={styles.contextValue}>
+          {getCountryNameFromCode(
+            transactionData.receivingCountry || "SO",
+          )}
+        </Text>
+        <Text style={styles.contextMeta}>
+          {transactionData.provider || "Provider selected earlier"}
+        </Text>
+      </FintechSectionCard>
+
+      <FintechSectionCard>
+        <View style={styles.form}>
+          <FintechTextField
+            label="First name"
+            icon="person-outline"
+            placeholder="SHUKRI"
+            value={firstName}
+            onChangeText={setFirstName}
+            autoCapitalize="characters"
+          />
+          <FintechTextField
+            label="Last name"
+            icon="person-outline"
+            placeholder="AHMED"
+            value={lastName}
+            onChangeText={setLastName}
+            autoCapitalize="characters"
+          />
+          <FintechTextField
+            label="Phone number"
+            icon="call-outline"
+            placeholder="+252615738865"
+            keyboardType="phone-pad"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+          />
+          <FintechTextField
+            label="Receiving country"
+            icon="flag-outline"
+            placeholder="SOMALIA"
+            value={receivingCountry}
+            onChangeText={setReceivingCountry}
+            autoCapitalize="characters"
+          />
+          <FintechTextField
+            label="Country of citizenship"
+            icon="globe-outline"
+            placeholder="SOMALIA"
+            value={countryOfCitizenship}
+            onChangeText={setCountryOfCitizenship}
+            autoCapitalize="characters"
+          />
+          <FintechTextField
+            label="Address"
+            icon="home-outline"
+            placeholder="Tonstadgrenda 113A"
+            value={address}
+            onChangeText={setAddress}
+          />
+          <FintechTextField
+            label="City"
+            icon="business-outline"
+            placeholder="Trondheim"
+            value={city}
+            onChangeText={setCity}
+          />
+          <FintechTextField
+            label="Relationship"
+            icon="people-outline"
+            placeholder="Spouse"
+            value={relationship}
+            onChangeText={setRelationship}
+          />
+        </View>
+      </FintechSectionCard>
+
+      <FintechStickyActionArea style={styles.footer}>
+        <FintechPrimaryButton
+          onPress={handleSaveRecipient}
+          loading={loading}
+          disabled={loading}
+        >
+          Save and continue
+        </FintechPrimaryButton>
+      </FintechStickyActionArea>
+    </KeyboardScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#2F2B23',
-  },
-  flex: {
-    flex: 1,
-  },
   container: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 10,
-    gap: 8,
-    backgroundColor: '#2F2B23',
+    paddingTop: fintechSpacing.sm,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 2,
-  },
-  iconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#4B453A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3A362B',
-  },
-  iconButtonPlaceholder: {
-    width: 32,
-    height: 32,
-  },
-  screenTitle: {
-    flex: 1,
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: '#F8F6F0',
-    textAlign: 'center',
-  },
-  scrollContent: {
-    gap: 10,
-    paddingBottom: 12,
-  },
-  contextCard: {
+  backButton: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#4B453A',
-    backgroundColor: '#3A362B',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 3,
+    borderColor: fintechColors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fintechColors.surface,
   },
-  contextLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#D8CEB5',
-  },
-  contextValue: {
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  contextMeta: {
-    fontSize: 13,
-    color: '#F1E8CF',
-  },
-  formCard: {
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#4B453A',
-    backgroundColor: '#3A362B',
-    padding: 12,
-  },
-  form: {
-    gap: 8,
-  },
-  actions: {
-    gap: 8,
+  progress: { marginTop: fintechSpacing.md, marginBottom: fintechSpacing.md },
+  contextCard: { gap: fintechSpacing.sm },
+  contextTop: { flexDirection: "row", justifyContent: "flex-start" },
+  contextValue: { fontSize: 22, fontWeight: "800", color: fintechColors.text },
+  contextMeta: { fontSize: 14, color: fintechColors.textMuted },
+  form: { gap: fintechSpacing.sm },
+  footer: {
+    paddingTop: fintechSpacing.md,
+    borderTopWidth: 1,
+    borderTopColor: fintechColors.border,
   },
 });

@@ -18,49 +18,46 @@ type PillTone = 'success' | 'info' | 'warning' | 'neutral' | 'danger';
 type NoticeTone = 'info' | 'success' | 'warning' | 'danger';
 
 export const fintechColors = {
-  primary: '#2F2B23',
-  primaryStrong: '#1F1B15',
-  primarySoft: '#FFF1B8',
-  background: '#F6F1E7',
+  primary: '#10B981',
+  primaryStrong: '#064E3B',
+  primarySoft: 'rgba(52,211,153,0.22)',
+  background: '#ECFDF5',
+  backgroundMuted: '#ECFDF5',
   surface: '#FFFFFF',
-  surfaceAlt: '#FBF7EC',
-  text: '#0F172A',
-  textMuted: '#64748B',
-  textSubtle: '#94A3B8',
-  border: '#E7DDC3',
-  borderStrong: '#D6C598',
-  success: '#15803D',
-  successSoft: '#DCFCE7',
-  warning: '#9A6700',
-  warningSoft: '#FFF3CD',
-  danger: '#B91C1C',
-  dangerSoft: '#FEE2E2',
-  infoSoft: '#FFF7D9',
-  shadow: '#0F172A',
+  surfaceAlt: '#FFFFFF',
+  surfaceStrong: '#ECFDF5',
+  text: '#022C22',
+  textMuted: '#064E3B',
+  textSubtle: '#34D399',
+  border: 'rgba(6,78,59,0.16)',
+  borderStrong: 'rgba(6,78,59,0.32)',
+  success: '#10B981',
+  successSoft: 'rgba(16,185,129,0.18)',
+  warning: '#34D399',
+  warningSoft: 'rgba(52,211,153,0.2)',
+  danger: '#064E3B',
+  dangerSoft: 'rgba(6,78,59,0.12)',
+  infoSoft: 'rgba(236,253,245,0.9)',
+  shadow: '#022C22',
 };
 
-export const fintechSpacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
+export const fintechSpacing = { xxs: 4, xs: 6, sm: 8, md: 16, lg: 24, xl: 32, xxl: 40, xxxl: 48 };
+export const fintechRadius = { sm: 12, md: 16, lg: 20, xl: 28, pill: 999 };
+export const fintechTypography = { eyebrow: 10, label: 11, body: 13, title: 15, hero: 22 };
+
+const pillMap: Record<PillTone, { bg: string; fg: string; border: string }> = {
+  success: { bg: fintechColors.successSoft, fg: fintechColors.success, border: 'rgba(55,199,135,0.28)' },
+  info: { bg: fintechColors.infoSoft, fg: fintechColors.primary, border: 'rgba(110,214,255,0.28)' },
+  warning: { bg: fintechColors.warningSoft, fg: fintechColors.warning, border: 'rgba(244,190,98,0.28)' },
+  neutral: { bg: 'rgba(157,174,196,0.12)', fg: fintechColors.textMuted, border: 'rgba(157,174,196,0.18)' },
+  danger: { bg: fintechColors.dangerSoft, fg: fintechColors.danger, border: 'rgba(255,122,122,0.28)' },
 };
 
-export const fintechRadius = {
-  sm: 12,
-  md: 16,
-  lg: 20,
-  pill: 999,
-};
-
-type FintechScreenHeaderProps = {
-  eyebrow?: string;
-  title: string;
-  subtitle?: string;
-  right?: ReactNode;
-  style?: StyleProp<ViewStyle>;
+const noticeMap: Record<NoticeTone, { bg: string; fg: string; border: string; icon: IconName }> = {
+  info: { bg: fintechColors.infoSoft, fg: fintechColors.primary, border: 'rgba(110,214,255,0.2)', icon: 'information-circle-outline' },
+  success: { bg: fintechColors.successSoft, fg: fintechColors.success, border: 'rgba(55,199,135,0.2)', icon: 'checkmark-circle-outline' },
+  warning: { bg: fintechColors.warningSoft, fg: fintechColors.warning, border: 'rgba(244,190,98,0.2)', icon: 'alert-circle-outline' },
+  danger: { bg: fintechColors.dangerSoft, fg: fintechColors.danger, border: 'rgba(255,122,122,0.2)', icon: 'close-circle-outline' },
 };
 
 export function FintechScreenHeader({
@@ -69,187 +66,132 @@ export function FintechScreenHeader({
   subtitle,
   right,
   style,
-}: FintechScreenHeaderProps) {
+  titleStyle,
+  subtitleStyle,
+}: {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  right?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  titleStyle?: StyleProp<TextStyle>;
+  subtitleStyle?: StyleProp<TextStyle>;
+}) {
   return (
-    <View style={[styles.screenHeader, style]}>
-      <View style={styles.screenHeaderCopy}>
-        {eyebrow ? <Text style={styles.screenEyebrow}>{eyebrow}</Text> : null}
-        <Text style={styles.screenTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.screenSubtitle}>{subtitle}</Text> : null}
+    <View style={[styles.header, style]}>
+      <View style={styles.headerCopy}>
+        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+        <Text style={[styles.title, titleStyle]}>{title}</Text>
+        {subtitle ? (
+          <Text style={[styles.subtitle, subtitleStyle]}>{subtitle}</Text>
+        ) : null}
       </View>
-      {right ? <View style={styles.screenHeaderRight}>{right}</View> : null}
+      {right ? <View>{right}</View> : null}
     </View>
   );
 }
 
-type FintechProgressProps = {
-  step: number;
-  total: number;
-  label?: string;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function FintechProgress({ step, total, label, style }: FintechProgressProps) {
-  const safeTotal = Math.max(total, 1);
-  const fillStyle: ViewStyle = {
-    width: `${Math.min(step / safeTotal, 1) * 100}%`,
-  };
-
+export function FintechProgress({ step, total, label, style }: { step: number; total: number; label?: string; style?: StyleProp<ViewStyle> }) {
+  const ratio = `${Math.min(step / Math.max(total, 1), 1) * 100}%`;
   return (
-    <View style={[styles.progressWrap, style]}>
-      <View style={styles.progressHeader}>
-        <Text style={styles.progressLabel}>{label ?? `Step ${step} of ${total}`}</Text>
-        <Text style={styles.progressCount}>{step}/{total}</Text>
+    <View style={style}>
+      <View style={styles.progressTop}>
+        <Text style={styles.progressText}>{label ?? `Step ${step} of ${total}`}</Text>
+        <Text style={styles.progressText}>{step}/{total}</Text>
       </View>
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, fillStyle]} />
+        <View style={[styles.progressFill, { width: ratio as `${number}%` }]} />
       </View>
     </View>
   );
 }
 
-type FintechHeroCardProps = {
+export function FintechHeroCard({ eyebrow, title, subtitle, status, children, style }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
   status?: ReactNode;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
-};
-
-export function FintechHeroCard({
-  eyebrow,
-  title,
-  subtitle,
-  status,
-  children,
-  style,
-}: FintechHeroCardProps) {
+}) {
   return (
-    <View style={[styles.heroCard, style]}>
-      <View style={styles.heroHeader}>
-        <View style={styles.heroCopy}>
-          {eyebrow ? <Text style={styles.heroEyebrow}>{eyebrow}</Text> : null}
+    <View style={[styles.card, styles.heroCard, style]}>
+      <View style={styles.header}>
+        <View style={styles.headerCopy}>
+          {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
           <Text style={styles.heroTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.heroSubtitle}>{subtitle}</Text> : null}
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
-        {status ? <View style={styles.heroStatus}>{status}</View> : null}
+        {status ? <View>{status}</View> : null}
       </View>
       {children}
     </View>
   );
 }
 
-type FintechStatusPillProps = {
-  icon?: IconName;
-  label: string;
-  tone?: PillTone;
-  style?: StyleProp<ViewStyle>;
-};
-
-const pillStyles: Record<PillTone, { backgroundColor: string; color: string }> = {
-  success: { backgroundColor: fintechColors.successSoft, color: fintechColors.success },
-  info: { backgroundColor: fintechColors.infoSoft, color: fintechColors.primary },
-  warning: { backgroundColor: fintechColors.warningSoft, color: fintechColors.warning },
-  neutral: { backgroundColor: '#EEF2F6', color: '#475569' },
-  danger: { backgroundColor: fintechColors.dangerSoft, color: fintechColors.danger },
-};
-
-export function FintechStatusPill({
-  icon,
-  label,
-  tone = 'neutral',
-  style,
-}: FintechStatusPillProps) {
-  const theme = pillStyles[tone];
-
+export function FintechStatusPill({ icon, label, tone = 'neutral', style }: { icon?: IconName; label: string; tone?: PillTone; style?: StyleProp<ViewStyle> }) {
+  const theme = pillMap[tone];
   return (
-    <View style={[styles.statusPill, { backgroundColor: theme.backgroundColor }, style]}>
-      {icon ? <Ionicons name={icon} size={14} color={theme.color} /> : null}
-      <Text style={[styles.statusPillText, { color: theme.color }]}>{label}</Text>
+    <View style={[styles.pill, { backgroundColor: theme.bg, borderColor: theme.border }, style]}>
+      {icon ? <Ionicons name={icon} size={14} color={theme.fg} /> : null}
+      <Text style={[styles.pillText, { color: theme.fg }]}>{label}</Text>
     </View>
   );
 }
 
-type FintechSectionCardProps = {
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function FintechSectionCard({ children, style }: FintechSectionCardProps) {
-  return <View style={[styles.sectionCard, style]}>{children}</View>;
+export function FintechSectionCard({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  return <View style={[styles.card, style]}>{children}</View>;
 }
 
-export function FintechSectionBlock({ children, style }: FintechSectionCardProps) {
+export function FintechSectionBlock({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return <FintechSectionCard style={style}>{children}</FintechSectionCard>;
 }
-
-type FintechSectionHeaderProps = {
-  title: string;
-  note?: string;
-  right?: ReactNode;
-  style?: StyleProp<ViewStyle>;
-};
 
 export function FintechSectionHeader({
   title,
   note,
   right,
   style,
-}: FintechSectionHeaderProps) {
+  titleStyle,
+  noteStyle,
+}: {
+  title: string;
+  note?: string;
+  right?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  titleStyle?: StyleProp<TextStyle>;
+  noteStyle?: StyleProp<TextStyle>;
+}) {
   return (
     <View style={[styles.sectionHeader, style]}>
-      <View style={styles.sectionHeaderCopy}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {note ? <Text style={styles.sectionNote}>{note}</Text> : null}
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.sectionTitle, titleStyle]}>{title}</Text>
+        {note ? <Text style={[styles.sectionNote, noteStyle]}>{note}</Text> : null}
       </View>
       {right}
     </View>
   );
 }
 
-type FintechSummaryTileProps = {
-  label: string;
-  value: string;
-  emphasis?: boolean;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function FintechSummaryTile({
-  label,
-  value,
-  emphasis,
-  style,
-}: FintechSummaryTileProps) {
+export function FintechSummaryTile({ label, value, emphasis, style }: { label: string; value: string; emphasis?: boolean; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={[styles.summaryTile, emphasis && styles.summaryTilePrimary, style]}>
-      <Text style={[styles.summaryLabel, emphasis && styles.summaryLabelPrimary]}>{label}</Text>
-      <Text style={[styles.summaryValue, emphasis && styles.summaryValuePrimary]}>{value}</Text>
+    <View style={[styles.tile, emphasis && styles.tileEmphasis, style]}>
+      <Text style={[styles.tileLabel, emphasis && styles.tileLabelEmphasis]}>{label}</Text>
+      <Text style={styles.tileValue}>{value}</Text>
     </View>
   );
 }
 
-type FintechKeyValueRowProps = {
-  label: string;
-  value: string;
-  valueTone?: 'default' | 'muted' | 'primary';
-  style?: StyleProp<ViewStyle>;
-};
-
-export function FintechKeyValueRow({
-  label,
-  value,
-  valueTone = 'default',
-  style,
-}: FintechKeyValueRowProps) {
+export function FintechKeyValueRow({ label, value, valueTone = 'default', style }: { label: string; value: string; valueTone?: 'default' | 'muted' | 'primary' | 'success'; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[styles.keyValueRow, style]}>
       <Text style={styles.keyValueLabel}>{label}</Text>
       <Text
         style={[
           styles.keyValueValue,
-          valueTone === 'muted' && styles.keyValueValueMuted,
-          valueTone === 'primary' && styles.keyValueValuePrimary,
+          valueTone === 'muted' && { color: fintechColors.textMuted },
+          valueTone === 'primary' && { color: fintechColors.primary },
+          valueTone === 'success' && { color: fintechColors.success },
         ]}
       >
         {value}
@@ -258,11 +200,11 @@ export function FintechKeyValueRow({
   );
 }
 
-export function FintechInfoRow(props: FintechKeyValueRowProps) {
+export function FintechInfoRow(props: { label: string; value: string; valueTone?: 'default' | 'muted' | 'primary' | 'success'; style?: StyleProp<ViewStyle> }) {
   return <FintechKeyValueRow {...props} />;
 }
 
-type FintechButtonProps = {
+type ButtonProps = {
   label?: string;
   onPress: () => void;
   disabled?: boolean;
@@ -272,24 +214,11 @@ type FintechButtonProps = {
   children?: ReactNode;
 };
 
-export function FintechPrimaryButton({
-  label,
-  onPress,
-  disabled,
-  loading,
-  style,
-  textStyle,
-  children,
-}: FintechButtonProps) {
+export function FintechPrimaryButton({ label, onPress, disabled, loading, style, textStyle, children }: ButtonProps) {
   return (
-    <TouchableOpacity
-      style={[styles.primaryButton, disabled && styles.buttonDisabled, style]}
-      onPress={onPress}
-      disabled={disabled || loading}
-      activeOpacity={0.9}
-    >
+    <TouchableOpacity style={[styles.primaryButton, disabled && styles.disabled, style]} onPress={onPress} disabled={disabled || loading} activeOpacity={0.92}>
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" />
+        <ActivityIndicator color={fintechColors.background} />
       ) : typeof children === 'string' ? (
         <Text style={[styles.primaryButtonText, textStyle]}>{children}</Text>
       ) : children ? (
@@ -301,21 +230,9 @@ export function FintechPrimaryButton({
   );
 }
 
-export function FintechSecondaryButton({
-  label,
-  onPress,
-  disabled,
-  style,
-  textStyle,
-  children,
-}: Omit<FintechButtonProps, 'loading'>) {
+export function FintechSecondaryButton({ label, onPress, disabled, style, textStyle, children }: Omit<ButtonProps, 'loading'>) {
   return (
-    <TouchableOpacity
-      style={[styles.secondaryButton, disabled && styles.secondaryDisabled, style]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.9}
-    >
+    <TouchableOpacity style={[styles.secondaryButton, disabled && styles.disabled, style]} onPress={onPress} disabled={disabled} activeOpacity={0.9}>
       {typeof children === 'string' ? (
         <Text style={[styles.secondaryButtonText, textStyle]}>{children}</Text>
       ) : children ? (
@@ -327,16 +244,6 @@ export function FintechSecondaryButton({
   );
 }
 
-type FintechChoiceCardProps = {
-  title: string;
-  subtitle?: string;
-  icon?: IconName;
-  selected?: boolean;
-  trailing?: ReactNode;
-  onPress: () => void;
-  style?: StyleProp<ViewStyle>;
-};
-
 export function FintechChoiceCard({
   title,
   subtitle,
@@ -345,61 +252,51 @@ export function FintechChoiceCard({
   trailing,
   onPress,
   style,
-}: FintechChoiceCardProps) {
+  titleStyle,
+  subtitleStyle,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: IconName;
+  selected?: boolean;
+  trailing?: ReactNode;
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+  titleStyle?: StyleProp<TextStyle>;
+  subtitleStyle?: StyleProp<TextStyle>;
+}) {
   return (
-    <TouchableOpacity
-      style={[styles.choiceCard, selected && styles.choiceCardSelected, style]}
-      onPress={onPress}
-      activeOpacity={0.92}
-    >
+    <TouchableOpacity style={[styles.choiceCard, selected && styles.choiceCardSelected, style]} onPress={onPress} activeOpacity={0.92}>
       <View style={styles.choiceLeft}>
         {icon ? (
-          <View style={[styles.choiceIconWrap, selected && styles.choiceIconWrapSelected]}>
-            <Ionicons name={icon} size={20} color={selected ? fintechColors.primary : '#64748B'} />
+          <View style={[styles.choiceIcon, selected && styles.choiceIconSelected]}>
+            <Ionicons name={icon} size={20} color={selected ? fintechColors.primary : fintechColors.textMuted} />
           </View>
         ) : null}
-        <View style={styles.choiceCopy}>
-          <Text style={styles.choiceTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.choiceSubtitle}>{subtitle}</Text> : null}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.choiceTitle, titleStyle]}>{title}</Text>
+          {subtitle ? <Text style={[styles.choiceSubtitle, subtitleStyle]}>{subtitle}</Text> : null}
         </View>
       </View>
-      {trailing ?? (
-        <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
-          {selected ? <View style={styles.radioInner} /> : null}
-        </View>
-      )}
+      {trailing ?? <View style={[styles.radio, selected && styles.radioSelected]}>{selected ? <View style={styles.radioDot} /> : null}</View>}
     </TouchableOpacity>
   );
 }
 
-type FintechTextFieldProps = TextInputProps & {
+export function FintechTextField({ label, hint, error, icon, right, containerStyle, ...inputProps }: TextInputProps & {
   label?: string;
   hint?: string;
   error?: string;
   icon?: IconName;
   right?: ReactNode;
   containerStyle?: StyleProp<ViewStyle>;
-};
-
-export function FintechTextField({
-  label,
-  hint,
-  error,
-  icon,
-  right,
-  containerStyle,
-  ...inputProps
-}: FintechTextFieldProps) {
+}) {
   return (
     <View style={containerStyle}>
       {label ? <Text style={styles.fieldLabel}>{label}</Text> : null}
-      <View style={[styles.fieldShell, error && styles.fieldShellError]}>
-        {icon ? <Ionicons name={icon} size={18} color="#64748B" /> : null}
-        <TextInput
-          {...inputProps}
-          placeholderTextColor={fintechColors.textSubtle}
-          style={[styles.fieldInput, inputProps.style]}
-        />
+      <View style={[styles.field, error && { borderColor: fintechColors.danger }]}>
+        {icon ? <Ionicons name={icon} size={18} color={fintechColors.textSubtle} /> : null}
+        <TextInput {...inputProps} placeholderTextColor={fintechColors.textSubtle} style={[styles.fieldInput, inputProps.style]} />
         {right}
       </View>
       {error ? <Text style={styles.fieldError}>{error}</Text> : hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
@@ -407,53 +304,24 @@ export function FintechTextField({
   );
 }
 
-type FintechInlineMessageProps = {
-  tone?: NoticeTone;
-  title?: string;
-  text: string;
-  style?: StyleProp<ViewStyle>;
-};
-
-const noticeMap: Record<NoticeTone, { backgroundColor: string; color: string; icon: IconName }> = {
-  info: { backgroundColor: fintechColors.infoSoft, color: fintechColors.primary, icon: 'information-circle-outline' },
-  success: { backgroundColor: fintechColors.successSoft, color: fintechColors.success, icon: 'checkmark-circle-outline' },
-  warning: { backgroundColor: fintechColors.warningSoft, color: fintechColors.warning, icon: 'alert-circle-outline' },
-  danger: { backgroundColor: fintechColors.dangerSoft, color: fintechColors.danger, icon: 'close-circle-outline' },
-};
-
-export function FintechInlineMessage({
-  tone = 'info',
-  title,
-  text,
-  style,
-}: FintechInlineMessageProps) {
+export function FintechInlineMessage({ tone = 'info', title, text, style }: { tone?: NoticeTone; title?: string; text: string; style?: StyleProp<ViewStyle> }) {
   const theme = noticeMap[tone];
-
   return (
-    <View style={[styles.noticeCard, { backgroundColor: theme.backgroundColor }, style]}>
-      <Ionicons name={theme.icon} size={18} color={theme.color} />
-      <View style={styles.noticeCopy}>
-        {title ? <Text style={[styles.noticeTitle, { color: theme.color }]}>{title}</Text> : null}
+    <View style={[styles.notice, { backgroundColor: theme.bg, borderColor: theme.border }, style]}>
+      <Ionicons name={theme.icon} size={18} color={theme.fg} />
+      <View style={{ flex: 1 }}>
+        {title ? <Text style={[styles.noticeTitle, { color: theme.fg }]}>{title}</Text> : null}
         <Text style={styles.noticeText}>{text}</Text>
       </View>
     </View>
   );
 }
 
-type FintechTrustRowProps = {
-  icon: IconName;
-  title: string;
-  text: string;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function FintechTrustRow({ icon, title, text, style }: FintechTrustRowProps) {
+export function FintechTrustRow({ icon, title, text, style }: { icon: IconName; title: string; text: string; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[styles.trustRow, style]}>
-      <View style={styles.trustIconWrap}>
-        <Ionicons name={icon} size={18} color={fintechColors.primary} />
-      </View>
-      <View style={styles.trustCopy}>
+      <View style={styles.trustIcon}><Ionicons name={icon} size={18} color={fintechColors.primary} /></View>
+      <View style={{ flex: 1 }}>
         <Text style={styles.trustTitle}>{title}</Text>
         <Text style={styles.trustText}>{text}</Text>
       </View>
@@ -461,54 +329,27 @@ export function FintechTrustRow({ icon, title, text, style }: FintechTrustRowPro
   );
 }
 
-type FintechFooterCardProps = {
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function FintechFooterCard({ children, style }: FintechFooterCardProps) {
+export function FintechFooterCard({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.footerCard, style]}>{children}</View>;
 }
 
-type FintechReceiptCardProps = {
-  title?: string;
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-};
+export function FintechStickyActionArea({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  return <View style={[styles.stickyArea, style]}>{children}</View>;
+}
 
-export function FintechReceiptCard({
-  title,
-  children,
-  style,
-}: FintechReceiptCardProps) {
+export function FintechReceiptCard({ title, children, style }: { title?: string; children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={[styles.receiptCard, style]}>
-      {title ? <Text style={styles.receiptTitle}>{title}</Text> : null}
+    <View style={[styles.card, style]}>
+      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
       {children}
     </View>
   );
 }
 
-type FintechEmptyStateProps = {
-  icon: IconName;
-  title: string;
-  text: string;
-  action?: ReactNode;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function FintechEmptyState({
-  icon,
-  title,
-  text,
-  action,
-  style,
-}: FintechEmptyStateProps) {
+export function FintechEmptyState({ icon, title, text, action, style }: { icon: IconName; title: string; text: string; action?: ReactNode; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={[styles.emptyState, style]}>
-      <View style={styles.emptyIconWrap}>
-        <Ionicons name={icon} size={24} color={fintechColors.primary} />
-      </View>
+    <View style={[styles.empty, style]}>
+      <View style={styles.emptyIcon}><Ionicons name={icon} size={24} color={fintechColors.primary} /></View>
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptyText}>{text}</Text>
       {action}
@@ -516,430 +357,190 @@ export function FintechEmptyState({
   );
 }
 
+export function FintechAmountHeroCard({
+  label,
+  amount,
+  currency,
+  helper,
+  accent = 'primary',
+  style,
+  labelStyle,
+  valueStyle,
+  currencyStyle,
+  helperStyle,
+}: {
+  label: string;
+  amount: string;
+  currency: string;
+  helper?: string;
+  accent?: 'primary' | 'success';
+  style?: StyleProp<ViewStyle>;
+  labelStyle?: StyleProp<TextStyle>;
+  valueStyle?: StyleProp<TextStyle>;
+  currencyStyle?: StyleProp<TextStyle>;
+  helperStyle?: StyleProp<TextStyle>;
+}) {
+  return (
+    <View style={[styles.amountHero, accent === 'success' ? styles.amountHeroSuccess : styles.amountHeroPrimary, style]}>
+      <Text style={[styles.amountHeroLabel, labelStyle]}>{label}</Text>
+      <View style={styles.amountHeroRow}>
+        <Text style={[styles.amountHeroValue, valueStyle]}>{amount}</Text>
+        <View style={styles.amountHeroCurrency}>
+          <Text style={[styles.amountHeroCurrencyText, currencyStyle]}>
+            {currency}
+          </Text>
+        </View>
+      </View>
+      {helper ? (
+        <Text style={[styles.amountHeroHelper, helperStyle]}>{helper}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+export function FintechPricingSummaryCard({ title, items, totalLabel, totalValue, footerNote, style }: {
+  title?: string;
+  items: Array<{ label: string; value: string; tone?: 'default' | 'muted' | 'primary' | 'success' }>;
+  totalLabel?: string;
+  totalValue?: string;
+  footerNote?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.card, style]}>
+      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
+      <View style={{ gap: 10 }}>
+        {items.map((item) => (
+          <FintechKeyValueRow key={`${item.label}-${item.value}`} label={item.label} value={item.value} valueTone={item.tone || 'default'} />
+        ))}
+      </View>
+      {totalLabel && totalValue ? (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>{totalLabel}</Text>
+            <Text style={styles.totalValue}>{totalValue}</Text>
+          </View>
+        </>
+      ) : null}
+      {footerNote ? <Text style={styles.footerNote}>{footerNote}</Text> : null}
+    </View>
+  );
+}
+
+export function FintechRecipientRow({ title, subtitle, detail, provider, initials = 'RP', accentColor = fintechColors.primaryStrong, selected, onPress, style }: {
+  title: string;
+  subtitle: string;
+  detail?: string;
+  provider?: string;
+  initials?: string;
+  accentColor?: string;
+  selected?: boolean;
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <TouchableOpacity style={[styles.recipientRow, selected && styles.choiceCardSelected, style]} onPress={onPress} activeOpacity={0.92}>
+      <View style={[styles.avatar, { backgroundColor: accentColor }]}><Text style={styles.avatarText}>{initials}</Text></View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.choiceTitle}>{title}</Text>
+        <Text style={styles.choiceSubtitle}>{subtitle}</Text>
+        {detail || provider ? <Text style={styles.recipientDetail}>{[detail, provider].filter(Boolean).join('  -  ')}</Text> : null}
+      </View>
+      <Ionicons name={selected ? 'checkmark-circle' : 'chevron-forward'} size={selected ? 20 : 18} color={selected ? fintechColors.primary : fintechColors.textSubtle} />
+    </TouchableOpacity>
+  );
+}
+
+export function FintechPinDots({ value, style }: { value: string[]; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[styles.pinRow, style]}>
+      {value.map((digit, index) => (
+        <View key={index} style={[styles.pinBox, digit && styles.pinBoxFilled]}>{digit ? <View style={styles.pinDot} /> : null}</View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  screenHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: fintechSpacing.md,
-  },
-  screenHeaderCopy: {
-    flex: 1,
-    gap: fintechSpacing.xs,
-  },
-  screenHeaderRight: {
-    paddingTop: 2,
-  },
-  screenEyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: fintechColors.primary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: fintechColors.text,
-  },
-  screenSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: fintechColors.textMuted,
-  },
-  progressWrap: {
-    gap: fintechSpacing.sm,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: fintechColors.textMuted,
-  },
-  progressCount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: fintechColors.textMuted,
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: fintechRadius.pill,
-    backgroundColor: '#E6EDF5',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: fintechRadius.pill,
-    backgroundColor: fintechColors.primary,
-  },
-  heroCard: {
-    backgroundColor: fintechColors.surface,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    borderRadius: fintechRadius.lg,
-    padding: fintechSpacing.lg,
-    gap: fintechSpacing.lg,
-    shadowColor: fintechColors.shadow,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 24,
-    elevation: 2,
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: fintechSpacing.md,
-  },
-  heroCopy: {
-    flex: 1,
-    gap: fintechSpacing.xs,
-  },
-  heroStatus: {
-    alignItems: 'flex-end',
-  },
-  heroEyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: fintechColors.primary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: fintechColors.text,
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: fintechColors.textMuted,
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: fintechRadius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  sectionCard: {
-    backgroundColor: fintechColors.surface,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    borderRadius: fintechRadius.md,
-    padding: fintechSpacing.lg,
-    gap: fintechSpacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: fintechSpacing.sm,
-  },
-  sectionHeaderCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: fintechColors.text,
-  },
-  sectionNote: {
-    fontSize: 13,
-    color: fintechColors.textMuted,
-  },
-  summaryTile: {
-    flex: 1,
-    gap: 4,
-    padding: fintechSpacing.md,
-    backgroundColor: fintechColors.surfaceAlt,
-    borderRadius: fintechRadius.sm,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-  },
-  summaryTilePrimary: {
-    backgroundColor: fintechColors.primarySoft,
-    borderColor: '#C9DCF2',
-  },
-  summaryLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: fintechColors.textMuted,
-  },
-  summaryLabelPrimary: {
-    color: fintechColors.primary,
-  },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: fintechColors.text,
-  },
-  summaryValuePrimary: {
-    color: fintechColors.primaryStrong,
-  },
-  keyValueRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: fintechSpacing.sm,
-  },
-  keyValueLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: fintechColors.textMuted,
-  },
-  keyValueValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: fintechColors.text,
-    textAlign: 'right',
-  },
-  keyValueValueMuted: {
-    color: fintechColors.textMuted,
-  },
-  keyValueValuePrimary: {
-    color: fintechColors.primaryStrong,
-  },
-  primaryButton: {
-    minHeight: 54,
-    borderRadius: fintechRadius.md,
-    backgroundColor: fintechColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: fintechSpacing.lg,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    minHeight: 52,
-    borderRadius: fintechRadius.md,
-    backgroundColor: fintechColors.surface,
-    borderWidth: 1,
-    borderColor: fintechColors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: fintechSpacing.lg,
-  },
-  secondaryButtonText: {
-    color: fintechColors.text,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.55,
-  },
-  secondaryDisabled: {
-    opacity: 0.55,
-  },
-  choiceCard: {
-    minHeight: 72,
-    borderRadius: fintechRadius.md,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    backgroundColor: fintechColors.surface,
-    padding: fintechSpacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: fintechSpacing.md,
-  },
-  choiceCardSelected: {
-    borderColor: fintechColors.primary,
-    backgroundColor: fintechColors.primarySoft,
-  },
-  choiceLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: fintechSpacing.md,
-  },
-  choiceIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: fintechColors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  choiceIconWrapSelected: {
-    backgroundColor: '#DCEAF8',
-  },
-  choiceCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  choiceTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: fintechColors.text,
-  },
-  choiceSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: fintechColors.textMuted,
-  },
-  radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: fintechColors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioOuterSelected: {
-    borderColor: fintechColors.primary,
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: fintechColors.primary,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: fintechColors.text,
-    marginBottom: 8,
-  },
-  fieldShell: {
-    minHeight: 54,
-    borderRadius: fintechRadius.md,
-    borderWidth: 1,
-    borderColor: fintechColors.borderStrong,
-    backgroundColor: fintechColors.surface,
-    paddingHorizontal: fintechSpacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  fieldShellError: {
-    borderColor: fintechColors.danger,
-  },
-  fieldInput: {
-    flex: 1,
-    fontSize: 16,
-    color: fintechColors.text,
-    paddingVertical: 0,
-  },
-  fieldHint: {
-    marginTop: 6,
-    fontSize: 12,
-    color: fintechColors.textMuted,
-  },
-  fieldError: {
-    marginTop: 6,
-    fontSize: 12,
-    color: fintechColors.danger,
-  },
-  noticeCard: {
-    borderRadius: fintechRadius.sm,
-    padding: fintechSpacing.md,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: fintechSpacing.sm,
-  },
-  noticeCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  noticeTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  noticeText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: fintechColors.text,
-  },
-  trustRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: fintechSpacing.md,
-  },
-  trustIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: fintechColors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trustCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  trustTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: fintechColors.text,
-  },
-  trustText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: fintechColors.textMuted,
-  },
-  footerCard: {
-    backgroundColor: fintechColors.surface,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    borderRadius: fintechRadius.lg,
-    padding: fintechSpacing.lg,
-    gap: fintechSpacing.md,
-    shadowColor: fintechColors.shadow,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 2,
-  },
-  receiptCard: {
-    backgroundColor: fintechColors.surface,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    borderRadius: fintechRadius.md,
-    padding: fintechSpacing.lg,
-    gap: fintechSpacing.md,
-  },
-  receiptTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: fintechColors.text,
-  },
-  emptyState: {
-    alignItems: 'center',
-    gap: fintechSpacing.sm,
-    paddingVertical: fintechSpacing.lg,
-  },
-  emptyIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: fintechColors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: fintechColors.text,
-  },
-  emptyText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: fintechColors.textMuted,
-    textAlign: 'center',
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: fintechSpacing.sm },
+  headerCopy: { flex: 1, gap: fintechSpacing.xs },
+  eyebrow: { fontSize: fintechTypography.eyebrow, fontWeight: '700', color: fintechColors.primary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  title: { fontSize: fintechTypography.hero, lineHeight: 26, fontWeight: '800', color: fintechColors.text },
+  heroTitle: { fontSize: 18, lineHeight: 24, fontWeight: '800', color: fintechColors.text },
+  subtitle: { fontSize: fintechTypography.body, lineHeight: 18, color: fintechColors.textMuted },
+  progressTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  progressText: { fontSize: 13, fontWeight: '600', color: fintechColors.textMuted },
+  progressTrack: { height: 8, borderRadius: fintechRadius.pill, backgroundColor: fintechColors.surfaceAlt, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: fintechRadius.pill, backgroundColor: fintechColors.primary },
+  card: { backgroundColor: fintechColors.surface, borderWidth: 1, borderColor: fintechColors.border, borderRadius: fintechRadius.lg, padding: fintechSpacing.md, gap: fintechSpacing.sm },
+  heroCard: { padding: fintechSpacing.lg, shadowColor: fintechColors.shadow, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.22, shadowRadius: 24, elevation: 6 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: fintechRadius.pill, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
+  pillText: { fontSize: 12, fontWeight: '700' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: fintechSpacing.sm },
+  sectionTitle: { fontSize: fintechTypography.title, fontWeight: '700', color: fintechColors.text },
+  sectionNote: { fontSize: 12, lineHeight: 16, color: fintechColors.textMuted },
+  tile: { flex: 1, padding: fintechSpacing.md, borderRadius: fintechRadius.md, borderWidth: 1, borderColor: fintechColors.border, backgroundColor: fintechColors.surfaceAlt, gap: 4 },
+  tileEmphasis: { backgroundColor: fintechColors.primarySoft, borderColor: 'rgba(110,214,255,0.22)' },
+  tileLabel: { fontSize: 11, fontWeight: '600', color: fintechColors.textMuted },
+  tileLabelEmphasis: { color: '#C9F2FF' },
+  tileValue: { fontSize: 16, fontWeight: '800', color: fintechColors.text },
+  keyValueRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: fintechSpacing.sm },
+  keyValueLabel: { flex: 1, fontSize: 13, lineHeight: 18, color: fintechColors.textMuted },
+  keyValueValue: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700', color: fintechColors.text, textAlign: 'right' },
+  primaryButton: { minHeight: 52, borderRadius: fintechRadius.md, backgroundColor: fintechColors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: fintechSpacing.lg, shadowColor: fintechColors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 5 },
+  primaryButtonText: { color: fintechColors.background, fontSize: 14, fontWeight: '800' },
+  secondaryButton: { minHeight: 52, borderRadius: fintechRadius.md, backgroundColor: fintechColors.surfaceAlt, borderWidth: 1, borderColor: fintechColors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: fintechSpacing.lg },
+  secondaryButtonText: { color: fintechColors.text, fontSize: 13, fontWeight: '700' },
+  disabled: { opacity: 1 },
+  choiceCard: { minHeight: 72, borderRadius: fintechRadius.md, borderWidth: 1, borderColor: fintechColors.border, backgroundColor: fintechColors.surfaceAlt, padding: fintechSpacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: fintechSpacing.md },
+  choiceCardSelected: { borderColor: fintechColors.primary, backgroundColor: fintechColors.primarySoft },
+  choiceLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: fintechSpacing.md },
+  choiceIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: fintechColors.surfaceStrong, alignItems: 'center', justifyContent: 'center' },
+  choiceIconSelected: { backgroundColor: 'rgba(110,214,255,0.18)' },
+  choiceTitle: { fontSize: 13, fontWeight: '800', color: fintechColors.text },
+  choiceSubtitle: { fontSize: 11, lineHeight: 15, color: fintechColors.textMuted },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: fintechColors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  radioSelected: { borderColor: fintechColors.primary },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: fintechColors.primary },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: fintechColors.text, marginBottom: 6 },
+  field: { minHeight: 52, borderRadius: fintechRadius.md, borderWidth: 1, borderColor: fintechColors.border, backgroundColor: fintechColors.surfaceAlt, paddingHorizontal: fintechSpacing.md, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  fieldInput: { flex: 1, fontSize: 14, color: fintechColors.text, paddingVertical: 0 },
+  fieldHint: { marginTop: 6, fontSize: 11, color: fintechColors.textMuted },
+  fieldError: { marginTop: 6, fontSize: 11, color: fintechColors.danger },
+  notice: { borderRadius: fintechRadius.md, padding: fintechSpacing.md, flexDirection: 'row', gap: fintechSpacing.sm, borderWidth: 1 },
+  noticeTitle: { fontSize: 11, fontWeight: '700' },
+  noticeText: { fontSize: 11, lineHeight: 16, color: fintechColors.text },
+  trustRow: { flexDirection: 'row', alignItems: 'flex-start', gap: fintechSpacing.md },
+  trustIcon: { width: 38, height: 38, borderRadius: 14, backgroundColor: fintechColors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  trustTitle: { fontSize: 12, fontWeight: '700', color: fintechColors.text },
+  trustText: { fontSize: 11, lineHeight: 16, color: fintechColors.textMuted },
+  footerCard: { backgroundColor: fintechColors.surface, borderWidth: 1, borderColor: fintechColors.border, borderRadius: fintechRadius.lg, padding: fintechSpacing.md, gap: fintechSpacing.md, shadowColor: fintechColors.shadow, shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 2 },
+  stickyArea: { backgroundColor: fintechColors.surface, borderTopWidth: 1, borderTopColor: fintechColors.border, paddingTop: fintechSpacing.md, gap: fintechSpacing.sm },
+  empty: { alignItems: 'center', gap: fintechSpacing.sm, paddingVertical: fintechSpacing.xxl },
+  emptyIcon: { width: 56, height: 56, borderRadius: 20, backgroundColor: fintechColors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: 15, fontWeight: '800', color: fintechColors.text },
+  emptyText: { fontSize: 12, lineHeight: 16, color: fintechColors.textMuted, textAlign: 'center' },
+  amountHero: { borderRadius: fintechRadius.xl, padding: fintechSpacing.lg, gap: fintechSpacing.sm, borderWidth: 1 },
+  amountHeroPrimary: { backgroundColor: fintechColors.surfaceStrong, borderColor: 'rgba(110,214,255,0.24)' },
+  amountHeroSuccess: { backgroundColor: 'rgba(55,199,135,0.12)', borderColor: 'rgba(55,199,135,0.24)' },
+  amountHeroLabel: { fontSize: 12, fontWeight: '700', color: fintechColors.textMuted },
+  amountHeroRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: fintechSpacing.md },
+  amountHeroValue: { flex: 1, fontSize: 24, lineHeight: 28, fontWeight: '800', color: fintechColors.text },
+  amountHeroCurrency: { minHeight: 42, borderRadius: 16, paddingHorizontal: fintechSpacing.md, alignItems: 'center', justifyContent: 'center', backgroundColor: fintechColors.background, borderWidth: 1, borderColor: fintechColors.border },
+  amountHeroCurrencyText: { fontSize: 13, fontWeight: '800', color: fintechColors.text },
+  amountHeroHelper: { fontSize: 12, lineHeight: 18, color: fintechColors.textMuted },
+  divider: { height: 1, backgroundColor: fintechColors.border },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: fintechSpacing.md },
+  totalLabel: { fontSize: 13, fontWeight: '700', color: fintechColors.text },
+  totalValue: { fontSize: 18, fontWeight: '800', color: fintechColors.text },
+  footerNote: { fontSize: 11, lineHeight: 16, color: fintechColors.textSubtle },
+  recipientRow: { minHeight: 76, borderRadius: fintechRadius.md, borderWidth: 1, borderColor: fintechColors.border, backgroundColor: fintechColors.surface, padding: fintechSpacing.md, flexDirection: 'row', alignItems: 'center', gap: fintechSpacing.md },
+  avatar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
+  recipientDetail: { fontSize: 10, color: fintechColors.textSubtle },
+  pinRow: { flexDirection: 'row', gap: 10 },
+  pinBox: { width: 44, height: 52, borderRadius: 16, backgroundColor: fintechColors.surfaceAlt, borderWidth: 1, borderColor: fintechColors.border, alignItems: 'center', justifyContent: 'center' },
+  pinBoxFilled: { borderColor: fintechColors.primary, backgroundColor: fintechColors.primarySoft },
+  pinDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: fintechColors.primary },
 });

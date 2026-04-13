@@ -3,27 +3,30 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  SafeAreaView,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  fintechColors,
   FintechEmptyState,
   FintechPrimaryButton,
-  fintechColors,
+  fintechSpacing,
 } from "../../components/ui/fintech";
+import { Screen } from "../../components/ui/layout";
 import { RecipientService } from "../../services/apiClient";
 import {
   createRecipientProfile,
   normalizeCountryCode,
   RecipientProfile,
 } from "../../services/remittance";
-import { getTransferDraft, mergeTransferDraft } from "../../services/transferDraft";
+import {
+  getTransferDraft,
+  mergeTransferDraft,
+} from "../../services/transferDraft";
 
 type RecipientResponse = {
   Id: string;
@@ -58,31 +61,38 @@ const mapApiRecipientToProfile = (item: RecipientResponse): RecipientProfile =>
     lastName: item.LastName,
     phoneNumber: item.PhoneNumber,
     receivingCountry: item.ReceivingCountry || "SO",
-    countryOfCitizenship: item.CountryOfCitizenship || item.ReceivingCountry || "SO",
+    countryOfCitizenship:
+      item.CountryOfCitizenship || item.ReceivingCountry || "SO",
     address: item.Address || "",
     city: item.City || "",
     provider: item.Provider || "",
-    service: item.Service === "MobileWallet" ? "MobileMoney" : (item.Service as RecipientProfile["service"]),
+    service:
+      item.Service === "MobileWallet"
+        ? "MobileMoney"
+        : (item.Service as RecipientProfile["service"]),
     relationshipToSender: item.RelationshipToSender || "",
   });
 
 export default function RecipientListScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const transactionData = getTransferDraft();
   const [recipients, setRecipients] = useState<RecipientProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const selectedCountry = normalizeCountryCode(transactionData.receivingCountry || "SO");
+  const selectedCountry = normalizeCountryCode(
+    transactionData.receivingCountry || "SO",
+  );
 
   useEffect(() => {
     const fetchRecipients = async () => {
       try {
         setLoading(true);
         setError("");
-        const response = (await RecipientService.getAllRecipients()) as RecipientListResponse | RecipientResponse[];
+        const response = (await RecipientService.getAllRecipients()) as
+          | RecipientListResponse
+          | RecipientResponse[];
         const rows = Array.isArray(response)
           ? response
           : Array.isArray(response?.Data)
@@ -93,16 +103,22 @@ export default function RecipientListScreen() {
 
         if (!rows) {
           throw new Error(
-            (!Array.isArray(response) && (response?.Error || "Could not load recipients.")) ||
+            (!Array.isArray(response) &&
+              (response?.Error || "Could not load recipients.")) ||
               "Could not load recipients.",
           );
         }
 
         const nextRecipients = rows
           .map(mapApiRecipientToProfile)
-          .filter((recipient: RecipientProfile) => recipient.receivingCountry === selectedCountry)
+          .filter(
+            (recipient: RecipientProfile) =>
+              recipient.receivingCountry === selectedCountry,
+          )
           .sort((a: RecipientProfile, b: RecipientProfile) =>
-            `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
+            `${a.firstName} ${a.lastName}`.localeCompare(
+              `${b.firstName} ${b.lastName}`,
+            ),
           );
 
         setRecipients(nextRecipients);
@@ -120,7 +136,8 @@ export default function RecipientListScreen() {
   const filteredRecipients = useMemo(
     () =>
       recipients.filter((recipient) => {
-        const fullName = `${recipient.firstName} ${recipient.lastName}`.toLowerCase();
+        const fullName =
+          `${recipient.firstName} ${recipient.lastName}`.toLowerCase();
         return (
           fullName.includes(searchQuery.toLowerCase()) ||
           recipient.phoneNumber.includes(searchQuery)
@@ -128,6 +145,15 @@ export default function RecipientListScreen() {
       }),
     [recipients, searchQuery],
   );
+  const emptyState = searchQuery.trim().length
+    ? {
+        title: "No matches found",
+        text: "Try a different name or phone number.",
+      }
+    : {
+        title: "No saved recipients",
+        text: "Add a recipient for this destination to continue.",
+      };
 
   const handleSelectRecipient = (recipient: RecipientProfile) => {
     mergeTransferDraft({
@@ -161,230 +187,233 @@ export default function RecipientListScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingScreen}>
+      <Screen contentStyle={styles.loadingScreen}>
         <ActivityIndicator size="large" color={fintechColors.primary} />
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.errorWrap}>
-          <FintechEmptyState
-            icon="alert-circle-outline"
-            title="Recipients unavailable"
-            text={error}
-            action={
-              <FintechPrimaryButton
-                label="Back to amount"
-                onPress={() => router.replace("/transaction/SendMoneyScreen")}
-              />
-            }
-          />
-        </View>
-      </SafeAreaView>
+      <Screen contentStyle={styles.errorWrap}>
+        <FintechEmptyState
+          icon="alert-circle-outline"
+          title="Recipients unavailable"
+          text={error}
+          action={
+            <FintechPrimaryButton
+              label="Back to amount"
+              onPress={() => router.replace("/transaction/SendMoneyScreen")}
+            />
+          }
+        />
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.content, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
-        <View style={styles.header}>
-          <View style={styles.topBar}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} activeOpacity={0.85}>
-              <Ionicons name="chevron-back" size={18} color="#A0A7B4" />
-            </TouchableOpacity>
-            <Text style={styles.screenTitle}>Select Recipient</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => router.push("/recipient/AddRecipientScreen")}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="add" size={16} color="#2F2B23" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.contextCard}>
-            <Text style={styles.contextLabel}>Sending to</Text>
-            <Text style={styles.contextValue}>{selectedCountry}</Text>
-          </View>
-          <View style={styles.searchWrap}>
-            <Ionicons name="search-outline" size={18} color="#A0A7B4" />
-            <TextInput
-              placeholder="Search"
-              placeholderTextColor="#9CA3AF"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={styles.searchInput}
+    <Screen contentStyle={styles.content}>
+      <View style={styles.header}>
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={fintechColors.text}
             />
-          </View>
+          </TouchableOpacity>
+          <Text style={styles.screenTitle}>Select Recipient</Text>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push("/recipient/AddRecipientScreen")}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="add" size={16} color={fintechColors.background} />
+          </TouchableOpacity>
         </View>
-
-        <ScrollView
-          style={styles.listArea}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {filteredRecipients.length ? (
-            filteredRecipients.map((recipient) => (
-              <TouchableOpacity
-                key={recipient.id || recipient.phoneNumber}
-                style={styles.recipientCard}
-                onPress={() => handleSelectRecipient(recipient)}
-                activeOpacity={0.92}
-              >
-                <View
-                  style={[
-                    styles.avatarCircle,
-                    { backgroundColor: getAvatarColor(recipient.id || recipient.phoneNumber) },
-                  ]}
-                >
-                  <Text style={styles.avatarText}>
-                    {`${recipient.firstName} ${recipient.lastName}`
-                      .split(" ")
-                      .map((part) => part[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </Text>
-                </View>
-
-                <View style={styles.recipientInfo}>
-                  <Text style={styles.recipientName} numberOfLines={1}>
-                    {recipient.firstName} {recipient.lastName}
-                  </Text>
-                  <Text style={styles.recipientMeta}>{recipient.phoneNumber}</Text>
-                </View>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <FintechEmptyState
-              icon="people-outline"
-              title="No saved recipients"
-              text="Add a recipient for this destination to continue."
-            />
-          )}
-        </ScrollView>
-
+        <View style={styles.contextCard}>
+          <Text style={styles.contextLabel}>Sending to</Text>
+          <Text style={styles.contextValue}>{selectedCountry}</Text>
+        </View>
+        <View style={styles.searchWrap}>
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={fintechColors.textMuted}
+          />
+          <TextInput
+            placeholder="Search"
+            placeholderTextColor={fintechColors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+        </View>
       </View>
-    </SafeAreaView>
+
+      <FlatList
+        style={styles.listArea}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        data={filteredRecipients}
+        keyExtractor={(recipient) => recipient.id || recipient.phoneNumber}
+        renderItem={({ item: recipient }) => (
+          <TouchableOpacity
+            style={styles.recipientCard}
+            onPress={() => handleSelectRecipient(recipient)}
+            activeOpacity={0.92}
+          >
+            <View
+              style={[
+                styles.avatarCircle,
+                {
+                  backgroundColor: getAvatarColor(
+                    recipient.id || recipient.phoneNumber,
+                  ),
+                },
+              ]}
+            >
+              <Text style={styles.avatarText}>
+                {`${recipient.firstName} ${recipient.lastName}`
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </Text>
+            </View>
+
+            <View style={styles.recipientInfo}>
+              <Text style={styles.recipientName} numberOfLines={1}>
+                {recipient.firstName} {recipient.lastName}
+              </Text>
+              <Text style={styles.recipientMeta}>
+                {recipient.phoneNumber}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={
+          <FintechEmptyState
+            icon="people-outline"
+            title={emptyState.title}
+            text={emptyState.text}
+          />
+        }
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#2F2B23',
-  },
   loadingScreen: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: '#2F2B23',
+    gap: 0,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 0,
-    gap: 8,
-    backgroundColor: '#2F2B23',
+    paddingTop: fintechSpacing.sm,
+    gap: fintechSpacing.md,
   },
   header: {
-    gap: 10,
-    marginBottom: 2,
+    gap: fintechSpacing.sm,
+    marginBottom: fintechSpacing.xs,
   },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: fintechSpacing.xs,
   },
   iconButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#4B453A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3A362B',
+    borderColor: fintechColors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fintechColors.surface,
   },
   addButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F4DF78',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fintechColors.primary,
   },
   screenTitle: {
     flex: 1,
     fontSize: 18,
     lineHeight: 22,
-    fontWeight: '700',
-    color: '#F8F6F0',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: fintechColors.text,
+    textAlign: "center",
     marginHorizontal: 8,
   },
   contextCard: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#4B453A',
-    backgroundColor: '#3A362B',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderColor: fintechColors.border,
+    backgroundColor: fintechColors.surface,
+    paddingHorizontal: fintechSpacing.md,
+    paddingVertical: fintechSpacing.sm,
     gap: 2,
   },
   contextLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#D8CEB5',
+    fontWeight: "600",
+    color: fintechColors.textMuted,
   },
   contextValue: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: fintechColors.text,
   },
   searchWrap: {
     minHeight: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fintechSpacing.xs,
+    paddingHorizontal: fintechSpacing.md,
     borderRadius: 23,
     borderWidth: 1,
-    borderColor: '#4B453A',
-    backgroundColor: '#3A362B',
+    borderColor: fintechColors.border,
+    backgroundColor: fintechColors.surface,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: fintechColors.text,
     paddingVertical: 0,
   },
   listArea: {
     flex: 1,
   },
   listContent: {
-    gap: 10,
-    paddingBottom: 12,
+    gap: fintechSpacing.md,
+    paddingBottom: fintechSpacing.lg,
   },
   recipientCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    gap: fintechSpacing.sm,
+    paddingHorizontal: fintechSpacing.md,
+    paddingVertical: fintechSpacing.md,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#4B453A',
-    backgroundColor: '#3A362B',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 1,
+    borderColor: fintechColors.border,
+    backgroundColor: fintechColors.surface,
   },
   avatarCircle: {
     width: 38,
@@ -405,15 +434,14 @@ const styles = StyleSheet.create({
   recipientName: {
     fontSize: 14,
     fontWeight: "700",
-    color: '#FFFFFF',
+    color: fintechColors.text,
   },
   recipientMeta: {
     fontSize: 12,
-    color: '#D8CEB5',
+    color: fintechColors.textMuted,
   },
   errorWrap: {
     flex: 1,
-    padding: 24,
     justifyContent: "center",
   },
 });

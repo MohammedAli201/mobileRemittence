@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,7 +13,9 @@ import {
   FintechSectionCard,
   FintechStatusPill,
   fintechColors,
+  fintechSpacing,
 } from '../../components/ui/fintech';
+import { ScrollScreen } from '../../components/ui/layout';
 import { TransactionService } from '../../services/apiClient';
 
 type ApiTransaction = {
@@ -77,15 +78,14 @@ export default function TransactionList() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <FintechScreenHeader
-            eyebrow="History"
-            title="All transfers"
-            subtitle="A compact view of recent remittance activity and statuses."
-          />
-        </View>
+    <ScrollScreen contentStyle={styles.content}>
+      <View style={styles.header}>
+        <FintechScreenHeader
+          eyebrow="History"
+          title="All transfers"
+          subtitle="A compact view of recent remittance activity and statuses."
+        />
+      </View>
 
         <View style={styles.listArea}>
           {loading ? (
@@ -93,12 +93,12 @@ export default function TransactionList() {
               <ActivityIndicator color={fintechColors.primary} />
             </View>
           ) : transfers.length ? (
-            transfers.slice(0, 4).map((item) => (
+            transfers.map((item) => (
               <TouchableOpacity key={item.id} style={styles.transferCard} activeOpacity={0.9} onPress={() => router.back()}>
                 <View style={styles.transferTop}>
                   <View style={styles.transferCopy}>
                     <Text style={styles.transferName}>{item.name}</Text>
-                    <Text style={styles.transferMeta}>{item.date} · {item.method}</Text>
+                    <Text style={styles.transferMeta}>{item.date} - {item.method}</Text>
                   </View>
                   <FintechStatusPill label={item.status} tone={getStatusTone(item.status)} />
                 </View>
@@ -117,27 +117,21 @@ export default function TransactionList() {
               />
             </FintechSectionCard>
           )}
-        </View>
       </View>
-    </SafeAreaView>
+    </ScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: fintechColors.background,
-  },
   content: {
-    flex: 1,
-    padding: 20,
-    gap: 12,
+    paddingTop: fintechSpacing.sm,
+    gap: fintechSpacing.md,
   },
   header: {
-    marginBottom: 8,
+    marginBottom: fintechSpacing.xs,
   },
   listArea: {
-    gap: 12,
+    gap: fintechSpacing.md,
     flex: 1,
   },
   transferCard: {
@@ -145,17 +139,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: fintechColors.border,
     backgroundColor: fintechColors.surface,
-    padding: 16,
-    gap: 12,
+    padding: fintechSpacing.md,
+    gap: fintechSpacing.md,
   },
   transferTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: fintechSpacing.md,
   },
   transferCopy: {
     flex: 1,
-    gap: 4,
+    gap: fintechSpacing.xs,
   },
   transferName: {
     fontSize: 15,
@@ -169,7 +163,7 @@ const styles = StyleSheet.create({
   transferBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: fintechSpacing.md,
   },
   transferCountry: {
     fontSize: 13,
@@ -183,6 +177,6 @@ const styles = StyleSheet.create({
   loadingState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 32,
+    paddingVertical: fintechSpacing.xl,
   },
 });

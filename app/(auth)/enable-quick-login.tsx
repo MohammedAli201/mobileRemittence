@@ -1,6 +1,7 @@
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { ScrollScreen } from "../../components/ui/layout";
 import {
   FintechChoiceCard,
   FintechHeroCard,
@@ -9,49 +10,57 @@ import {
   FintechStatusPill,
   FintechTrustRow,
   fintechColors,
-} from '../../components/ui/fintech';
+  fintechSpacing,
+} from "../../components/ui/fintech";
 
-type QuickLoginMethod = 'pin' | 'biometric';
+type QuickLoginMethod = "pin" | "biometric";
 
 export default function EnableQuickLoginScreen() {
   const router = useRouter();
-  const [selectedMethod, setSelectedMethod] = useState<QuickLoginMethod>('pin');
+  const [selectedMethod, setSelectedMethod] = useState<QuickLoginMethod>("pin");
 
   const handleContinue = () => {
     router.replace({
-      pathname: '/(auth)/setup-pin',
+      pathname: "/(auth)/setup-pin",
       params: { preferred: selectedMethod },
     });
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <ScrollScreen contentStyle={styles.scrollContainer}>
         <FintechScreenHeader
           eyebrow="Quick Login"
           title="Set up faster access"
           subtitle="Choose your preferred unlock method for future sessions."
-          right={<FintechStatusPill icon="time-outline" label="30 sec setup" tone="info" />}
+          right={
+            <FintechStatusPill
+              icon="time-outline"
+              label="30 sec setup"
+              tone="info"
+            />
+          }
+          titleStyle={styles.headerTitle}
+          subtitleStyle={styles.headerSubtitle}
         />
 
         <FintechHeroCard
           title="Keep repeat sign-ins simple"
-          subtitle="You will still confirm transfers and payments before money moves."
+          subtitle="You still confirm transfers and payments before money moves."
         >
           <View style={styles.options}>
             <FintechChoiceCard
               icon="keypad-outline"
               title="PIN only"
               subtitle="Reliable on every device."
-              selected={selectedMethod === 'pin'}
-              onPress={() => setSelectedMethod('pin')}
+              selected={selectedMethod === "pin"}
+              onPress={() => setSelectedMethod("pin")}
             />
             <FintechChoiceCard
               icon="finger-print-outline"
               title="Biometric + PIN"
               subtitle="Fastest unlock with PIN backup."
-              selected={selectedMethod === 'biometric'}
-              onPress={() => setSelectedMethod('biometric')}
+              selected={selectedMethod === "biometric"}
+              onPress={() => setSelectedMethod("biometric")}
             />
           </View>
         </FintechHeroCard>
@@ -65,23 +74,24 @@ export default function EnableQuickLoginScreen() {
         <FintechPrimaryButton onPress={handleContinue}>
           Continue
         </FintechPrimaryButton>
-      </View>
-    </SafeAreaView>
+    </ScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: fintechColors.background,
+  scrollContainer: {
+    justifyContent: "space-between",
+    gap: fintechSpacing.lg,
   },
-  container: {
-    flex: 1,
-    justifyContent: 'space-between',
-    padding: 24,
-    gap: 18,
+  headerTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   options: {
-    gap: 12,
+    gap: fintechSpacing.sm,
   },
 });

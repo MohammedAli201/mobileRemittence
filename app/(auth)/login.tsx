@@ -1,17 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
+import { KeyboardScrollScreen, Screen } from "../../components/ui/layout";
 import {
   FintechHeroCard,
   FintechInlineMessage,
@@ -21,15 +19,16 @@ import {
   FintechTextField,
   FintechTrustRow,
   fintechColors,
-} from '../../components/ui/fintech';
-import { useUser } from '../../context/UserContext';
-import AuthHelpers from '../../services/AuthHelpers';
+  fintechSpacing,
+} from "../../components/ui/fintech";
+import { useUser } from "../../context/UserContext";
+import AuthHelpers from "../../services/AuthHelpers";
 
 export default function Login() {
   const router = useRouter();
   const { login, isLoading: authLoading } = useUser();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [secureEntry, setSecureEntry] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -39,7 +38,7 @@ export default function Login() {
       try {
         const pinExists = await AuthHelpers.pinExists();
         if (pinExists) {
-          router.replace('/(auth)/pin-entry');
+          router.replace("/(auth)/pin-entry");
           return;
         }
       } catch {
@@ -55,12 +54,15 @@ export default function Login() {
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail || !password) {
-      Alert.alert('Missing details', 'Enter your email and password to continue.');
+      Alert.alert(
+        "Missing details",
+        "Enter your email and password to continue.",
+      );
       return;
     }
 
     if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
-      Alert.alert('Invalid email', 'Enter a valid email address.');
+      Alert.alert("Invalid email", "Enter a valid email address.");
       return;
     }
 
@@ -68,17 +70,20 @@ export default function Login() {
     try {
       const signedInUser = await login(trimmedEmail, password);
 
-      if (signedInUser.stepUpVerificationRequired || !signedInUser.isTrustedDevice) {
-        router.replace('/(auth)/enable-quick-login');
+      if (
+        signedInUser.stepUpVerificationRequired ||
+        !signedInUser.isTrustedDevice
+      ) {
+        router.replace("/(auth)/enable-quick-login");
       } else {
-        router.replace('/transaction/RecentTransactions');
+        router.replace("/transaction/RecentTransactions");
       }
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
         error?.message ||
-        'Sign in failed. Please try again.';
-      Alert.alert('Sign in failed', errorMessage);
+        "Sign in failed. Please try again.";
+      Alert.alert("Sign in failed", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -86,30 +91,33 @@ export default function Login() {
 
   if (checkingAuth || authLoading) {
     return (
-      <SafeAreaView style={styles.loadingScreen}>
+      <Screen contentStyle={styles.loadingScreen}>
         <ActivityIndicator size="large" color={fintechColors.primary} />
         <Text style={styles.loadingBrand}>JubaPay</Text>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <View style={styles.container}>
+    <KeyboardScrollScreen contentStyle={styles.scrollContainer}>
           <FintechScreenHeader
-            eyebrow="Secure Sign In"
+            eyebrow="Secure sign in"
             title="Welcome back"
-            subtitle="Fast sign in, clear costs, secure transfers."
-            right={<FintechStatusPill icon="shield-checkmark-outline" label="Protected" tone="info" />}
+            subtitle="Sign in to continue your transfers."
+            right={
+              <FintechStatusPill
+                icon="shield-checkmark-outline"
+                label="Protected"
+                tone="info"
+              />
+            }
+            titleStyle={styles.headerTitle}
+            subtitleStyle={styles.headerSubtitle}
           />
 
           <FintechHeroCard
             title="Access your account"
-            subtitle="Use your email and password. Quick login can be enabled right after sign-in."
+            subtitle="Use your email and password. Enable quick login after sign-in."
           >
             <View style={styles.form}>
               <FintechTextField
@@ -129,29 +137,37 @@ export default function Login() {
                 secureTextEntry={secureEntry}
                 value={password}
                 onChangeText={setPassword}
-                right={(
-                  <TouchableOpacity onPress={() => setSecureEntry((prev) => !prev)}>
+                right={
+                  <TouchableOpacity
+                    onPress={() => setSecureEntry((prev) => !prev)}
+                  >
                     <Ionicons
-                      name={secureEntry ? 'eye-off-outline' : 'eye-outline'}
+                      name={secureEntry ? "eye-off-outline" : "eye-outline"}
                       size={18}
                       color="#64748B"
                     />
                   </TouchableOpacity>
-                )}
+                }
               />
             </View>
           </FintechHeroCard>
 
-          <FintechInlineMessage
-            text="You will review the exchange rate, fees, and recipient amount before any payment is taken."
-          />
+          <FintechInlineMessage text="You will review pricing and recipient details before payment." />
 
           <View style={styles.footer}>
-            <FintechPrimaryButton onPress={handleLogin} loading={loading} disabled={loading}>
+            <FintechPrimaryButton
+              onPress={handleLogin}
+              loading={loading}
+              disabled={loading}
+            >
               <Text style={styles.primaryText}>Sign in</Text>
             </FintechPrimaryButton>
 
-            <TouchableOpacity style={styles.registerRow} onPress={() => router.push('/(auth)/register')} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.registerRow}
+              onPress={() => router.push("/(auth)/register")}
+              activeOpacity={0.8}
+            >
               <Text style={styles.registerLabel}>New here?</Text>
               <Text style={styles.registerLink}>Create account</Text>
             </TouchableOpacity>
@@ -164,53 +180,48 @@ export default function Login() {
               />
             </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </KeyboardScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: fintechColors.background,
-  },
   loadingScreen: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: fintechColors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 0,
   },
   loadingBrand: {
-    marginTop: 14,
+    marginTop: fintechSpacing.sm,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
     color: fintechColors.primary,
     letterSpacing: 0.2,
   },
-  flex: {
-    flex: 1,
+  scrollContainer: {
+    justifyContent: "space-between",
+    gap: fintechSpacing.lg,
   },
-  container: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    gap: 16,
+  headerTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   form: {
-    gap: 14,
+    gap: fintechSpacing.md,
   },
   footer: {
-    gap: 16,
+    gap: fintechSpacing.lg,
   },
   trustBlock: {
-    paddingHorizontal: 4,
+    paddingHorizontal: fintechSpacing.xxs,
   },
   registerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: fintechSpacing.xs,
   },
   registerLabel: {
     fontSize: 14,
@@ -218,12 +229,12 @@ const styles = StyleSheet.create({
   },
   registerLink: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     color: fintechColors.primary,
   },
   primaryText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

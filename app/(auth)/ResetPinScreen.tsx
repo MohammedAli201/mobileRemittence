@@ -1,13 +1,11 @@
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
   StyleSheet,
   View,
-} from 'react-native';
+} from "react-native";
+import { KeyboardScrollScreen } from "../../components/ui/layout";
 import {
   FintechHeroCard,
   FintechInlineMessage,
@@ -17,43 +15,58 @@ import {
   FintechStatusPill,
   FintechTextField,
   fintechColors,
-} from '../../components/ui/fintech';
-import { useUser } from '../../context/UserContext';
-import { AuthHelpers } from '../../services/AuthHelpers';
+  fintechSpacing,
+} from "../../components/ui/fintech";
+import { useUser } from "../../context/UserContext";
+import { AuthHelpers } from "../../services/AuthHelpers";
 
 export default function ResetPinScreen() {
-  const [password, setPassword] = useState('');
-  const [newPin, setNewPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
+  const [password, setPassword] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { user } = useUser();
 
   const handleReset = async () => {
+    if (!user?.email) {
+      Alert.alert(
+        "Session Error",
+        "No active user session found. Please sign in again.",
+      );
+      return;
+    }
+
     if (!password.trim()) {
-      Alert.alert('Missing password', 'Enter your password to continue.');
+      Alert.alert("Missing password", "Enter your password to continue.");
       return;
     }
 
     if (newPin.length !== 4 || confirmPin.length !== 4) {
-      Alert.alert('Invalid PIN', 'PIN must be exactly 4 digits.');
+      Alert.alert("Invalid PIN", "PIN must be exactly 4 digits.");
       return;
     }
 
     if (newPin !== confirmPin) {
-      Alert.alert('PIN mismatch', 'PINs do not match.');
+      Alert.alert("PIN mismatch", "PINs do not match.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const userId = await AuthHelpers.verifyCredentialsForPinReset(user?.email || '', password);
+      const userId = await AuthHelpers.verifyCredentialsForPinReset(
+        user.email,
+        password,
+      );
       await AuthHelpers.completePinReset(userId, newPin);
-      Alert.alert('PIN updated', 'Your quick login PIN has been changed.', [
-        { text: 'Continue', onPress: () => router.back() },
+      Alert.alert("PIN updated", "Your quick login PIN has been changed.", [
+        { text: "Continue", onPress: () => router.back() },
       ]);
     } catch (error: any) {
-      Alert.alert('Reset failed', error.message || 'Failed to reset PIN. Please try again.');
+      Alert.alert(
+        "Reset failed",
+        error.message || "Failed to reset PIN. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -61,21 +74,24 @@ export default function ResetPinScreen() {
 
   const handleLogout = async () => {
     await AuthHelpers.clearPin();
-    router.replace('/(auth)/login');
+    router.replace("/(auth)/login");
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <View style={styles.container}>
+    <KeyboardScrollScreen contentStyle={styles.scrollContainer}>
           <FintechScreenHeader
             eyebrow="Reset PIN"
             title="Create a new PIN"
             subtitle="Verify with your password first."
-            right={<FintechStatusPill icon="shield-checkmark-outline" label="Secure reset" tone="info" />}
+            right={
+              <FintechStatusPill
+                icon="shield-checkmark-outline"
+                label="Secure reset"
+                tone="info"
+              />
+            }
+            titleStyle={styles.headerTitle}
+            subtitleStyle={styles.headerSubtitle}
           />
 
           <FintechHeroCard
@@ -99,7 +115,7 @@ export default function ResetPinScreen() {
                 secureTextEntry
                 maxLength={4}
                 value={newPin}
-                onChangeText={(value) => setNewPin(value.replace(/\D/g, ''))}
+                onChangeText={(value) => setNewPin(value.replace(/\D/g, ""))}
               />
               <FintechTextField
                 label="Confirm PIN"
@@ -109,45 +125,49 @@ export default function ResetPinScreen() {
                 secureTextEntry
                 maxLength={4}
                 value={confirmPin}
-                onChangeText={(value) => setConfirmPin(value.replace(/\D/g, ''))}
+                onChangeText={(value) =>
+                  setConfirmPin(value.replace(/\D/g, ""))
+                }
               />
             </View>
           </FintechHeroCard>
 
-          <FintechInlineMessage
-            text="If you no longer remember your password, sign out and log back in before creating a new PIN."
-          />
+          <FintechInlineMessage text="If you forgot your password, sign out and log back in before creating a new PIN." />
 
           <View style={styles.actions}>
-            <FintechPrimaryButton onPress={handleReset} loading={isLoading} disabled={isLoading}>
+            <FintechPrimaryButton
+              onPress={handleReset}
+              loading={isLoading}
+              disabled={isLoading}
+            >
               Save new PIN
             </FintechPrimaryButton>
-            <FintechSecondaryButton label="Sign out instead" onPress={handleLogout} />
+            <FintechSecondaryButton
+              label="Sign out instead"
+              onPress={handleLogout}
+            />
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </KeyboardScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: fintechColors.background,
+  scrollContainer: {
+    justifyContent: "space-between",
+    gap: fintechSpacing.lg,
   },
-  flex: {
-    flex: 1,
+  headerTitle: {
+    fontSize: 20,
+    lineHeight: 24,
   },
-  container: {
-    flex: 1,
-    justifyContent: 'space-between',
-    padding: 24,
-    gap: 18,
+  headerSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   form: {
-    gap: 14,
+    gap: fintechSpacing.md,
   },
   actions: {
-    gap: 10,
+    gap: fintechSpacing.sm,
   },
 });

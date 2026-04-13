@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, SafeAreaView, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { fintechColors } from '../../components/ui/fintech';
+import { Screen } from '../../components/ui/layout';
 import { useUser } from '../../context/UserContext';
 import AuthService from '../../services/AuthHelpers';
 
@@ -16,7 +17,7 @@ export default function CheckAuthScreen() {
       const pinExists = await AuthService.pinExists();
 
       if (!user?.id) {
-        router.replace('/(auth)/login');
+        router.replace('/(auth)/welcome');
         return;
       }
 
@@ -25,24 +26,23 @@ export default function CheckAuthScreen() {
         return;
       }
 
-      router.replace('/(auth)/enable-quick-login');
+      router.replace('/(auth)/login');
     };
 
     routeUser();
   }, [isLoading, router, user?.id]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen contentStyle={styles.container}>
       <ActivityIndicator size="large" color={fintechColors.primary} />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: fintechColors.background,
+    gap: 0,
   },
 });

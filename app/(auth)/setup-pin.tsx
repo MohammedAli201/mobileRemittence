@@ -1,14 +1,13 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
   StyleSheet,
+  Text,
   View,
-} from 'react-native';
+} from "react-native";
+import { KeyboardScrollScreen } from "../../components/ui/layout";
 import {
   FintechHeroCard,
   FintechInlineMessage,
@@ -18,15 +17,16 @@ import {
   FintechStatusPill,
   FintechTextField,
   fintechColors,
-} from '../../components/ui/fintech';
-import { useUser } from '../../context/UserContext';
-import { AuthHelpers } from '../../services/AuthHelpers';
+  fintechSpacing,
+} from "../../components/ui/fintech";
+import { useUser } from "../../context/UserContext";
+import { AuthHelpers } from "../../services/AuthHelpers";
 
 const PIN_LENGTH = 4;
 
 export default function SetupPinScreen() {
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
@@ -35,11 +35,14 @@ export default function SetupPinScreen() {
   const { user, userRegistrationData } = useUser();
 
   const selectedMethod = useMemo(
-    () => (preferred === 'biometric' ? 'biometric' : 'pin'),
-    [preferred]
+    () => (preferred === "biometric" ? "biometric" : "pin"),
+    [preferred],
   );
 
-  const pinsMatch = pin.length === PIN_LENGTH && confirmPin.length === PIN_LENGTH && pin === confirmPin;
+  const pinsMatch =
+    pin.length === PIN_LENGTH &&
+    confirmPin.length === PIN_LENGTH &&
+    pin === confirmPin;
   const hasMismatch = confirmPin.length === PIN_LENGTH && pin !== confirmPin;
 
   useEffect(() => {
@@ -48,44 +51,59 @@ export default function SetupPinScreen() {
       return;
     }
 
-    Alert.alert('Session required', 'Sign in again before setting up quick login.');
-    router.replace('/(auth)/login');
+    Alert.alert(
+      "Session required",
+      "Sign in again before setting up quick login.",
+    );
+    router.replace("/(auth)/login");
   }, [router, user?.email, user?.id]);
 
   const handleSubmit = async () => {
-    if (!isReady) return;
+    if (!isReady || !user?.email) return;
 
-    if (!userRegistrationData.password.trim()) {
+    if (!userRegistrationData?.password?.trim()) {
       Alert.alert(
-        'Session required',
-        'Your login password is missing. Please sign in again.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
+        "Session required",
+        "Your login password is missing. Please sign in again.",
+        [{ text: "OK", onPress: () => router.replace("/(auth)/login") }],
       );
       return;
     }
 
     if (!/^\d{4}$/.test(pin) || !/^\d{4}$/.test(confirmPin)) {
-      Alert.alert('Invalid PIN', 'PIN must be exactly 4 digits.');
+      Alert.alert("Invalid PIN", "PIN must be exactly 4 digits.");
       return;
     }
 
     if (pin !== confirmPin) {
-      Alert.alert('PIN mismatch', 'Both PIN entries must match.');
+      Alert.alert("PIN mismatch", "Both PIN entries must match.");
       return;
     }
 
     setIsLoading(true);
     try {
-      await AuthHelpers.enableQuickLogin(user!.email, pin, userRegistrationData.password);
+      await AuthHelpers.enableQuickLogin(
+        user.email,
+        pin,
+        userRegistrationData.password,
+      );
       Alert.alert(
-        selectedMethod === 'biometric' ? 'Quick login enabled' : 'PIN enabled',
-        selectedMethod === 'biometric'
-          ? 'Biometric unlock is ready. Your PIN remains as backup.'
-          : 'Your PIN is ready for future sign-ins.',
-        [{ text: 'Continue', onPress: () => router.replace('/transaction/RecentTransactions') }]
+        selectedMethod === "biometric" ? "Quick login enabled" : "PIN enabled",
+        selectedMethod === "biometric"
+          ? "Biometric unlock is ready. Your PIN remains as backup."
+          : "Your PIN is ready for future sign-ins.",
+        [
+          {
+            text: "Continue",
+            onPress: () => router.replace("/transaction/RecentTransactions"),
+          },
+        ],
       );
     } catch (error: any) {
-      Alert.alert('Setup failed', error?.message || 'Could not save your PIN. Please try again.');
+      Alert.alert(
+        "Setup failed",
+        error?.message || "Could not save your PIN. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -93,32 +111,41 @@ export default function SetupPinScreen() {
 
   if (!isReady) {
     return (
-      <SafeAreaView style={styles.loadingScreen}>
+      <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={fintechColors.primary} />
         <Text style={styles.loadingBrand}>JubaPay</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <View style={styles.container}>
+    <KeyboardScrollScreen contentStyle={styles.scrollContainer}>
           <FintechScreenHeader
             eyebrow="Set PIN"
             title="Create your quick login PIN"
             subtitle="Keep it short, private, and easy to remember."
-            right={<FintechStatusPill icon="lock-closed-outline" label="4 digits" tone="info" />}
+            right={
+              <FintechStatusPill
+                icon="lock-closed-outline"
+                label="4 digits"
+                tone="info"
+              />
+            }
+            titleStyle={styles.headerTitle}
+            subtitleStyle={styles.headerSubtitle}
           />
 
           <FintechHeroCard
-            title={selectedMethod === 'biometric' ? 'PIN backup required' : 'PIN required'}
-            subtitle={selectedMethod === 'biometric'
-              ? 'Biometric unlock still keeps a PIN backup for recovery.'
-              : 'Use this PIN the next time you open the app.'}
+            title={
+              selectedMethod === "biometric"
+                ? "PIN backup required"
+                : "PIN required"
+            }
+            subtitle={
+              selectedMethod === "biometric"
+                ? "Biometric unlock still keeps a PIN backup for recovery."
+                : "Use this PIN the next time you open the app."
+            }
           >
             <View style={styles.form}>
               <FintechTextField
@@ -129,7 +156,7 @@ export default function SetupPinScreen() {
                 secureTextEntry
                 maxLength={4}
                 value={pin}
-                onChangeText={(value) => setPin(value.replace(/\D/g, ''))}
+                onChangeText={(value) => setPin(value.replace(/\D/g, ""))}
               />
               <FintechTextField
                 label="Confirm PIN"
@@ -139,17 +166,21 @@ export default function SetupPinScreen() {
                 secureTextEntry
                 maxLength={4}
                 value={confirmPin}
-                onChangeText={(value) => setConfirmPin(value.replace(/\D/g, ''))}
-                error={hasMismatch ? 'PIN entries do not match.' : undefined}
+                onChangeText={(value) =>
+                  setConfirmPin(value.replace(/\D/g, ""))
+                }
+                error={hasMismatch ? "PIN entries do not match." : undefined}
               />
             </View>
           </FintechHeroCard>
 
           <FintechInlineMessage
-            tone={pinsMatch ? 'success' : 'info'}
-            text={pinsMatch
-              ? 'Your PIN is ready to save.'
-              : 'Choose a 4-digit PIN and enter it twice.'}
+            tone={pinsMatch ? "success" : "info"}
+            text={
+              pinsMatch
+                ? "Your PIN is ready to save."
+                : "Choose a 4-digit PIN and enter it twice."
+            }
           />
 
           <View style={styles.actions}>
@@ -160,45 +191,45 @@ export default function SetupPinScreen() {
             >
               Save quick login
             </FintechPrimaryButton>
-            <FintechSecondaryButton label="Back" onPress={() => router.replace('/(auth)/enable-quick-login')} />
+            <FintechSecondaryButton
+              label="Back"
+              onPress={() => router.replace("/(auth)/enable-quick-login")}
+            />
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </KeyboardScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: fintechColors.background,
-  },
   loadingScreen: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: fintechColors.background,
   },
   loadingBrand: {
-    marginTop: 14,
+    marginTop: fintechSpacing.sm,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
     color: fintechColors.primary,
     letterSpacing: 0.2,
   },
-  flex: {
-    flex: 1,
+  scrollContainer: {
+    justifyContent: "space-between",
+    gap: fintechSpacing.lg,
   },
-  container: {
-    flex: 1,
-    justifyContent: 'space-between',
-    padding: 24,
-    gap: 18,
+  headerTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   form: {
-    gap: 14,
+    gap: fintechSpacing.md,
   },
   actions: {
-    gap: 10,
+    gap: fintechSpacing.sm,
   },
 });

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Alert, SafeAreaView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import {
   FintechFooterCard,
   FintechInfoRow,
@@ -11,7 +11,9 @@ import {
   FintechStatusPill,
   FintechSummaryTile,
   fintechColors,
+  fintechSpacing,
 } from '../../components/ui/fintech';
+import { ScrollScreen } from '../../components/ui/layout';
 import { getTransferDraft } from '../../services/transferDraft';
 
 const getParamValue = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
@@ -78,14 +80,13 @@ export default function ReceiptScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <FintechScreenHeader
-          eyebrow="Receipt"
-          title="Transfer receipt"
-          subtitle="Official proof of payment and payout details."
-          right={<FintechStatusPill icon="checkmark-circle-outline" label={receiptData.status} tone="success" />}
-        />
+    <ScrollScreen contentStyle={styles.container}>
+      <FintechScreenHeader
+        eyebrow="Receipt"
+        title="Transfer receipt"
+        subtitle="Official proof of payment and payout details."
+        right={<FintechStatusPill icon="checkmark-circle-outline" label={receiptData.status} tone="success" />}
+      />
 
         <FintechReceiptCard title="Transfer complete">
           <View style={styles.summaryRow}>
@@ -104,32 +105,25 @@ export default function ReceiptScreen() {
           <FintechInfoRow label="Date" value={receiptData.date} />
         </FintechReceiptCard>
 
-        <FintechFooterCard style={styles.footer}>
-          <FintechPrimaryButton label="Download PDF" onPress={handleDownload} />
-          <FintechSecondaryButton label="Share receipt" onPress={handleShare} />
-          <FintechSecondaryButton label="Done" onPress={() => router.replace('/transaction/RecentTransactions')} />
-        </FintechFooterCard>
-      </View>
-    </SafeAreaView>
+      <FintechFooterCard style={styles.footer}>
+        <FintechPrimaryButton label="Download PDF" onPress={handleDownload} />
+        <FintechSecondaryButton label="Share receipt" onPress={handleShare} />
+        <FintechSecondaryButton label="Done" onPress={() => router.replace('/transaction/RecentTransactions')} />
+      </FintechFooterCard>
+    </ScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: fintechColors.background,
-  },
   container: {
-    flex: 1,
-    padding: 24,
-    gap: 16,
+    paddingTop: fintechSpacing.sm,
+    gap: fintechSpacing.lg,
   },
   summaryRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: fintechSpacing.sm,
   },
   footer: {
-    marginTop: 'auto',
-    gap: 10,
+    gap: fintechSpacing.sm,
   },
 });

@@ -76,13 +76,25 @@ export const clearUserData = async () => {
  */
 export const AuthService = {
   register: async (payload: {
-    fullName: string;
     email: string;
     password: string;
-    phoneNumber?: string;
+    confirmPassword: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    countrySendingFrom: string;
+    nationalIdentityNumber: string;
+    streetAddress: string;
+    postCode: string;
+    city: string;
+    phoneNumber: string;
+    baseCurrency: string;
+    countryCode: string;
+    pin: string;
+    IpAddress?: string;
+    VisitorId?: string;
+    termsAccepted: boolean;
   }) => {
-    const [firstName, ...rest] = payload.fullName.trim().split(/\s+/);
-    const lastName = rest.join(" ");
     const candidateEndpoints = ["/auth/register", "/auth/signup"];
 
     let lastError: Error | null = null;
@@ -90,12 +102,24 @@ export const AuthService = {
     for (const endpoint of candidateEndpoints) {
       try {
         const response = await apiClient.post(endpoint, {
-          FullName: payload.fullName.trim(),
-          FirstName: firstName || payload.fullName.trim(),
-          LastName: lastName,
-          Email: payload.email.trim().toLowerCase(),
-          Password: payload.password,
-          PhoneNumber: payload.phoneNumber?.trim() || "",
+          email: payload.email.trim().toLowerCase(),
+          password: payload.password,
+          confirmPassword: payload.confirmPassword,
+          firstName: payload.firstName.trim(),
+          lastName: payload.lastName.trim(),
+          dateOfBirth: payload.dateOfBirth,
+          countrySendingFrom: payload.countrySendingFrom,
+          nationalIdentityNumber: payload.nationalIdentityNumber,
+          streetAddress: payload.streetAddress,
+          postCode: payload.postCode,
+          city: payload.city,
+          phoneNumber: payload.phoneNumber,
+          baseCurrency: payload.baseCurrency,
+          countryCode: payload.countryCode,
+          pin: payload.pin,
+          IpAddress: payload.IpAddress || "",
+          VisitorId: payload.VisitorId || "",
+          termsAccepted: payload.termsAccepted,
         });
 
         const data = response.data ?? {};

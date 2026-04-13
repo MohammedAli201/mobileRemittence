@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -7,7 +7,6 @@ import {
   Alert,
   BackHandler,
   Linking,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,37 +14,49 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  FintechPrimaryButton,
-  FintechSecondaryButton,
   fintechColors,
+  FintechInlineMessage,
+  FintechPricingSummaryCard,
+  FintechPrimaryButton,
+  FintechProgress,
+  FintechRecipientRow,
+  FintechScreenHeader,
+  FintechSectionCard,
+  FintechSectionHeader,
+  FintechStickyActionArea,
+  FintechTrustRow,
+  fintechSpacing,
 } from "../../components/ui/fintech";
+import { Screen } from "../../components/ui/layout";
 import { useUser } from "../../context/UserContext";
 import { TransactionService } from "../../services/apiClient";
 import {
   createTransferRecipientPayload,
   getCountryNameFromCode,
   normalizeCountryCode,
+  TransferService,
 } from "../../services/remittance";
 import { getTransferDraft } from "../../services/transferDraft";
-
-type PaymentSession = {
-  clientSecret?: string;
-  paymentIntentId: string | null;
-  transferId?: string;
-  checkoutUrl?: string;
+const deliveryMethodMap: Record<string, string> = {
+  MobileMoney: "wallet",
+  BankTransfer: "bank",
+  CashCollection: "cash",
 };
-
-type PendingConfirmationRecord = {
-  paymentIntentId: string;
-  transferId?: string;
-  payload: Record<string, unknown>;
-  recipientName: string;
-  createdAt: string;
+const countryCodeMap: Record<string, string> = {
+  Norway: "NO",
+  Somalia: "SO",
+  Kenya: "KE",
+  Ethiopia: "ET",
+  Uganda: "UG",
+  Tanzania: "TZ",
+  NO: "NO",
+  SO: "SO",
+  KE: "KE",
+  ET: "ET",
+  UG: "UG",
+  TZ: "TZ",
 };
-
-const PENDING_TRANSFER_CONFIRMATION_KEY = "pending_transfer_confirmation_v1";
 
 const decodeJWT = (token: string) => {
   try {
@@ -63,29 +74,20 @@ const decodeJWT = (token: string) => {
 };
 
 const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "Something went wrong. Please try again.";
-
-const roundTo = (value: number, decimals: number) => {
-  const factor = 10 ** decimals;
-  return Math.round((Number(value || 0) + Number.EPSILON) * factor) / factor;
-};
-
+  error instanceof Error
+    ? error.message
+    : "Something went wrong. Please try again.";
+const roundTo = (value: number, decimals: number) =>
+  Math.round((Number(value || 0) + Number.EPSILON) * 10 ** decimals) /
+  10 ** decimals;
 const getRecipientName = (firstName: string, lastName: string) =>
   [firstName, lastName].filter(Boolean).join(" ").trim();
-
 const getPaymentIntentIdFromClientSecret = (clientSecret: string) =>
   clientSecret.split("_secret_")[0] || null;
-
 const formatMoney = (amount: number, currency: string) =>
   `${Number(amount || 0).toFixed(2)} ${currency}`;
-
 const unwrapPaymentSessionPayload = (data: any) =>
-  data?.Data ||
-  data?.data ||
-  data?.result ||
-  data?.Result ||
-  data;
-
+  data?.Data || data?.data || data?.result || data?.Result || data;
 const compactDebugValue = (value: unknown) => {
   try {
     return JSON.stringify(value);
@@ -94,34 +96,19 @@ const compactDebugValue = (value: unknown) => {
   }
 };
 
-const deliveryMethodMap: Record<string, string> = {
-  MobileMoney: "wallet",
-  BankTransfer: "bank",
-  CashCollection: "cash",
-};
-
-const countryCodeMap: Record<string, string> = {
-  Norway: "NO",
-  Somalia: "SO",
-  Kenya: "KE",
-  Ethiopia: "ET",
-  Uganda: "UG",
-  Tanzania: "TZ",
-  NO: "NO",
-  SO: "SO",
-  KE: "KE",
-  ET: "ET",
-  UG: "UG",
-  TZ: "TZ",
-};
-
 const normalizeProviderForApi = (provider: string, service: string) => {
   const value = (provider || "").trim().toLowerCase();
-  if (service === "MobileMoney" && (value.includes("hormuud") || value.includes("evc"))) return "EVC";
+  if (
+    service === "MobileMoney" &&
+    (value.includes("hormuud") || value.includes("evc"))
+  )
+    return "EVC";
   if (service === "MobileMoney" && value.includes("premier")) return "Premier";
   if (service === "MobileMoney" && value.includes("dahab")) return "e-Dahab";
-  if (service === "BankTransfer" && value.includes("salam")) return "Salam Bank";
-  if (service === "CashCollection" && value.includes("juba")) return "JUBA EXPRESS";
+  if (service === "BankTransfer" && value.includes("salam"))
+    return "Salam Bank";
+  if (service === "CashCollection" && value.includes("juba"))
+    return "JUBA EXPRESS";
   return provider || "";
 };
 
@@ -129,34 +116,47 @@ export default function MoneyTransferScreen() {
   const transactionData = getTransferDraft();
   const { user, logout } = useUser();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const [loading, setLoading] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
-  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null);
+  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(
+    null,
+  );
   const [isConfirmingTransfer, setIsConfirmingTransfer] = useState(false);
   const [confirmationPending, setConfirmationPending] = useState(false);
-  const [pendingConfirmationRecord, setPendingConfirmationRecord] = useState<PendingConfirmationRecord | null>(null);
+  const [pendingConfirmationRecord, setPendingConfirmationRecord] =
+    useState<PendingConfirmationRecord | null>(null);
   const latestSetupKeyRef = useRef<string | null>(null);
 
   const recipientName = getRecipientName(
     transactionData.recipient.firstName,
     transactionData.recipient.lastName,
   );
-  const paymentSetupError =
-    !user?.token ? "Authentication required" :
-    !transactionData.quoteId ? "Quote is missing" :
-    !transactionData.paymentMethod ? "Payment method is missing" :
-    !transactionData.sendCurrency ? "Send currency is missing" :
-    !transactionData.receiveCurrency ? "Receive currency is missing" :
-    transactionData.sendAmount <= 0 ? "Send amount must be greater than zero" :
-    transactionData.totalAmount <= 0 ? "Total amount must be greater than zero" :
-    !recipientName ? "Recipient name is missing" :
-    !transactionData.recipient.phoneNumber ? "Recipient phone number is missing" :
-    !transactionData.recipient.countryOfCitizenship ? "Recipient citizenship is missing" :
-    !transactionData.service ? "Transfer service is missing" :
-    !transactionData.provider ? "Provider is missing" :
-    null;
+  const paymentSetupError = !user?.token
+    ? "Authentication required"
+    : !transactionData.quoteId
+      ? "Quote is missing"
+      : !transactionData.paymentMethod
+        ? "Payment method is missing"
+        : !transactionData.sendCurrency
+          ? "Send currency is missing"
+          : !transactionData.receiveCurrency
+            ? "Receive currency is missing"
+            : transactionData.sendAmount <= 0
+              ? "Send amount must be greater than zero"
+              : transactionData.totalAmount <= 0
+                ? "Total amount must be greater than zero"
+                : !recipientName
+                  ? "Recipient name is missing"
+                  : !transactionData.recipient.phoneNumber
+                    ? "Recipient phone number is missing"
+                    : !transactionData.recipient.countryOfCitizenship
+                      ? "Recipient citizenship is missing"
+                      : !transactionData.service
+                        ? "Transfer service is missing"
+                        : !transactionData.provider
+                          ? "Provider is missing"
+                          : null;
 
   const paymentSetupKey = paymentSetupError
     ? null
@@ -171,18 +171,16 @@ export default function MoneyTransferScreen() {
       });
 
   const buildTransferPayload = () => {
-    if (paymentSetupError) {
-      throw new Error(paymentSetupError);
-    }
-    if (!user?.token) {
-      throw new Error("Authentication required");
-    }
+    if (paymentSetupError) throw new Error(paymentSetupError);
+    if (!user?.token) throw new Error("Authentication required");
 
     const recipientPayload = createTransferRecipientPayload({
       ...transactionData.recipient,
-      receivingCountry: transactionData.receivingCountry,
+      receivingCountry: normalizeCountryCode(
+        transactionData.receivingCountry || "SO",
+      ),
       provider: transactionData.provider,
-      service: transactionData.service,
+      service: (transactionData.service || "MobileMoney") as TransferService,
     });
 
     const sendingCountry =
@@ -215,10 +213,14 @@ export default function MoneyTransferScreen() {
       service: recipientPayload.service,
       relationshipToSender: recipientPayload.relationshipToSender,
       paymentMethod:
-        transactionData.paymentMethod === "visa" || transactionData.paymentMethod === "mastercard"
+        transactionData.paymentMethod === "visa" ||
+        transactionData.paymentMethod === "mastercard"
           ? "Card"
           : transactionData.paymentMethod,
-      provider: normalizeProviderForApi(transactionData.provider, transactionData.service),
+      provider: normalizeProviderForApi(
+        transactionData.provider,
+        transactionData.service,
+      ),
       useBonus: transactionData.useBonus || false,
       idempotencyKey: `${transactionData.quoteId}-${Date.now()}`,
     };
@@ -235,8 +237,13 @@ export default function MoneyTransferScreen() {
     }
   };
 
-  const persistPendingConfirmation = async (record: PendingConfirmationRecord) => {
-    await AsyncStorage.setItem(PENDING_TRANSFER_CONFIRMATION_KEY, JSON.stringify(record));
+  const persistPendingConfirmation = async (
+    record: PendingConfirmationRecord,
+  ) => {
+    await AsyncStorage.setItem(
+      PENDING_TRANSFER_CONFIRMATION_KEY,
+      JSON.stringify(record),
+    );
     setPendingConfirmationRecord(record);
     setConfirmationPending(true);
   };
@@ -251,16 +258,12 @@ export default function MoneyTransferScreen() {
     const requestBody = buildTransferPayload();
     const authToken = user?.token;
     if (!authToken) throw new Error("Authentication required");
-
     const payload = decodeJWT(authToken);
-    if (payload?.exp && Date.now() >= payload.exp * 1000) {
+    if (payload?.exp && Date.now() >= payload.exp * 1000)
       throw new Error("Session expired. Please log in again.");
-    }
 
     const rawData = await TransactionService.createPaymentSession(requestBody);
-    console.log("Payment session raw response", rawData);
     const data = unwrapPaymentSessionPayload(rawData);
-    console.log("Payment session parsed response", data);
     const clientSecret =
       data?.ClientSecret ||
       data?.clientSecret ||
@@ -296,22 +299,14 @@ export default function MoneyTransferScreen() {
       data?.TransferId ||
       data?.Id;
 
-    if (clientSecret) {
+    if (clientSecret)
       return {
         clientSecret,
         paymentIntentId: getPaymentIntentIdFromClientSecret(clientSecret),
         transferId,
         checkoutUrl,
       };
-    }
-
-    if (checkoutUrl) {
-      return {
-        paymentIntentId: null,
-        transferId,
-        checkoutUrl,
-      };
-    }
+    if (checkoutUrl) return { paymentIntentId: null, transferId, checkoutUrl };
 
     throw new Error(
       transferId
@@ -328,19 +323,18 @@ export default function MoneyTransferScreen() {
       setPaymentReady(true);
     } catch (error) {
       const message = getErrorMessage(error);
-      if (message.toLowerCase().includes("unauthorized")) {
-        await logout();
-      }
-      if (message !== paymentSetupError) {
+      if (message.toLowerCase().includes("unauthorized")) await logout();
+      if (message !== paymentSetupError)
         Alert.alert("Payment Setup Failed", message);
-      }
       setPaymentReady(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const confirmTransferAfterPayment = async (record?: PendingConfirmationRecord) => {
+  const confirmTransferAfterPayment = async (
+    record?: PendingConfirmationRecord,
+  ) => {
     const payload = record
       ? {
           ...record.payload,
@@ -354,11 +348,12 @@ export default function MoneyTransferScreen() {
           TransferId: paymentSession?.transferId,
           PaymentStatus: "Succeeded",
         };
-
     return TransactionService.confirmTransferAfterPayment(payload);
   };
 
-  const retryTransferConfirmation = async (record?: PendingConfirmationRecord) => {
+  const retryTransferConfirmation = async (
+    record?: PendingConfirmationRecord,
+  ) => {
     let lastError: unknown = null;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
@@ -367,9 +362,8 @@ export default function MoneyTransferScreen() {
         return;
       } catch (error) {
         lastError = error;
-        if (attempt < 3) {
+        if (attempt < 3)
           await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
-        }
       }
     }
     throw lastError;
@@ -385,12 +379,12 @@ export default function MoneyTransferScreen() {
       setLoading(true);
       setIsConfirmingTransfer(true);
       await retryTransferConfirmation(pendingConfirmationRecord);
-
       router.replace({
         pathname: "/transaction/ReceiptScreen",
         params: {
           transactionId:
-            pendingConfirmationRecord.transferId || pendingConfirmationRecord.paymentIntentId,
+            pendingConfirmationRecord.transferId ||
+            pendingConfirmationRecord.paymentIntentId,
           sender:
             [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
             user?.email ||
@@ -413,24 +407,29 @@ export default function MoneyTransferScreen() {
       Alert.alert("Payment setup blocked", paymentSetupError);
       return;
     }
-
     if (!paymentReady) {
       await initializePaymentFlow();
       return;
     }
-
     try {
       setLoading(true);
-
       if (paymentSession?.checkoutUrl) {
         const canOpen = await Linking.canOpenURL(paymentSession.checkoutUrl);
-        if (!canOpen) {
+        if (!canOpen)
           throw new Error("Cannot open checkout URL on this device.");
-        }
+        await persistPendingConfirmation({
+          paymentIntentId:
+            paymentSession.paymentIntentId ||
+            paymentSession.transferId ||
+            `${Date.now()}`,
+          transferId: paymentSession.transferId,
+          payload: buildTransferPayload(),
+          recipientName,
+          createdAt: new Date().toISOString(),
+        });
         await Linking.openURL(paymentSession.checkoutUrl);
         return;
       }
-
       if (paymentSession?.clientSecret) {
         router.push({
           pathname: "/transaction/StripePayment",
@@ -459,23 +458,30 @@ export default function MoneyTransferScreen() {
       setPaymentSession(null);
       return;
     }
-
     if (confirmationPending || pendingConfirmationRecord) return;
     if (
       paymentSetupKey &&
       latestSetupKeyRef.current === paymentSetupKey &&
       (paymentReady || paymentSession)
-    ) {
+    )
       return;
-    }
-
     latestSetupKeyRef.current = paymentSetupKey;
     void initializePaymentFlow();
-  }, [confirmationPending, paymentReady, paymentSession, paymentSetupError, paymentSetupKey, pendingConfirmationRecord]);
+  }, [
+    confirmationPending,
+    paymentReady,
+    paymentSession,
+    paymentSetupError,
+    paymentSetupKey,
+    pendingConfirmationRecord,
+  ]);
 
   useEffect(() => {
     if (!isConfirmingTransfer) return undefined;
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => true);
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => true,
+    );
     return () => subscription.remove();
   }, [isConfirmingTransfer]);
 
@@ -498,472 +504,216 @@ export default function MoneyTransferScreen() {
     };
   }, []);
 
-  const sendCountryName = getCountryNameFromCode(transactionData.sendCountry || "NO");
-  const receiveCountryName = getCountryNameFromCode(transactionData.receivingCountry || "SO");
-  const feeLabel = formatMoney(transactionData.fees, transactionData.sendCurrency);
-  const totalLabel = formatMoney(transactionData.totalAmount, transactionData.sendCurrency);
-  const recipientGetsLabel = formatMoney(transactionData.receiveAmount, transactionData.receiveCurrency);
-  const sendAmountLabel = formatMoney(transactionData.sendAmount, transactionData.sendCurrency);
-  const shouldAllowScroll = height < 760;
+  const sendCountryName = getCountryNameFromCode(
+    transactionData.sendCountry || "NO",
+  );
+  const receiveCountryName = getCountryNameFromCode(
+    transactionData.receivingCountry || "SO",
+  );
+  const feeLabel = formatMoney(
+    transactionData.fees,
+    transactionData.sendCurrency,
+  );
+  const totalLabel = formatMoney(
+    transactionData.totalAmount,
+    transactionData.sendCurrency,
+  );
+  const recipientGetsLabel = formatMoney(
+    transactionData.receiveAmount,
+    transactionData.receiveCurrency,
+  );
+  const sendAmountLabel = formatMoney(
+    transactionData.sendAmount,
+    transactionData.sendCurrency,
+  );
+  const shouldAllowScroll = true;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => router.back()} activeOpacity={0.8}>
-          <Ionicons name="close" size={20} color="#2B2B2B" />
-        </TouchableOpacity>
+    <Screen contentStyle={styles.container}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="chevron-back" size={18} color={fintechColors.text} />
+      </TouchableOpacity>
 
-        <Text style={styles.screenLabel}>Review</Text>
-        <Text style={styles.screenTitle}>Check transfer details</Text>
+        <FintechProgress
+          step={6}
+          total={6}
+          label="Final checkout"
+          style={styles.progress}
+        />
+        <FintechScreenHeader
+          title="Confirm payment"
+          subtitle="Review the essentials."
+          titleStyle={styles.headerTitle}
+          subtitleStyle={styles.headerSubtitle}
+        />
 
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 128 + Math.max(insets.bottom, 8) }]}
-          showsVerticalScrollIndicator={shouldAllowScroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
           scrollEnabled={shouldAllowScroll}
         >
-          <View style={styles.amountSummaryCard}>
-            <View style={styles.amountSummaryRow}>
-              <View style={styles.amountSummaryMeta}>
-                <Text style={styles.amountSummaryLabel}>They get</Text>
-                <Text style={[styles.amountSummaryValue, styles.amountSummaryValueReceive]}>
-                  {Number(transactionData.receiveAmount || 0).toFixed(2).replace(".", ",")}
-                </Text>
-              </View>
-              <View style={[styles.currencyBadge, styles.currencyBadgeReceive]}>
-                <CountryFlag country={receiveCountryName} />
-                <Text style={[styles.currencyBadgeText, styles.currencyBadgeTextReceive]}>
+          <View style={styles.amountCard}>
+            <Text style={styles.amountLabel}>Recipient gets</Text>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountValue}>
+                {Number(transactionData.receiveAmount || 0).toFixed(2)}
+              </Text>
+              <View style={styles.amountCurrency}>
+                <Text style={styles.amountCurrencyText}>
                   {transactionData.receiveCurrency || "USD"}
                 </Text>
               </View>
             </View>
-
-            <View style={styles.reviewDivider} />
-
-            <View style={styles.amountSummaryRow}>
-              <View style={styles.amountSummaryMeta}>
-                <Text style={styles.amountSummaryLabel}>You send</Text>
-                <Text style={styles.amountSummaryValue}>
-                  {Number(transactionData.sendAmount || 0).toFixed(2).replace(".", ",")}
-                </Text>
-              </View>
-              <View style={styles.currencyBadge}>
-                <CountryFlag country={sendCountryName} />
-                <Text style={styles.currencyBadgeText}>{transactionData.sendCurrency || "NOK"}</Text>
-              </View>
-            </View>
+            <Text style={styles.amountMeta}>
+              {receiveCountryName} • Estimated delivery in minutes
+            </Text>
           </View>
 
-          <View style={styles.reviewCard}>
-            <Text style={styles.sectionTitle}>Recipient</Text>
-            <View style={styles.reviewRow}>
-              <View style={styles.personBadge}>
-                <Text style={styles.personBadgeText}>{(recipientName || "R").slice(0, 1).toUpperCase()}</Text>
-              </View>
-              <View style={styles.reviewRowContent}>
-                <Text style={styles.reviewValueStrong}>{recipientName || "Missing recipient name"}</Text>
-                <Text style={styles.reviewSubtext}>{transactionData.recipient.phoneNumber}</Text>
-              </View>
-            </View>
+          <FintechSectionCard>
+            <FintechSectionHeader
+              title="Recipient"
+              note="Saved details."
+              titleStyle={styles.sectionTitle}
+              noteStyle={styles.sectionNote}
+            />
+            <FintechRecipientRow
+              title={recipientName || "Missing recipient name"}
+              subtitle={transactionData.recipient.phoneNumber}
+              detail={
+                transactionData.recipient.city ||
+                transactionData.recipient.relationshipToSender ||
+                undefined
+              }
+              provider={transactionData.provider || transactionData.service}
+              initials={(recipientName || "R")
+                .split(/\s+/)
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+              accentColor={
+                transactionData.recipient.avatarColor ||
+                fintechColors.primaryStrong
+              }
+              onPress={() => router.back()}
+            />
+          </FintechSectionCard>
 
-            <View style={styles.reviewDivider} />
+          <FintechPricingSummaryCard
+            title="Transfer summary"
+            items={[
+              { label: "You send", value: sendAmountLabel },
+              { label: "Recipient gets", value: recipientGetsLabel, tone: "success" },
+              { label: "Fee", value: feeLabel },
+            ]}
+            totalLabel="Total to pay"
+            totalValue={totalLabel}
+          />
 
-            <Text style={styles.sectionTitle}>Transfer details</Text>
-            <View style={styles.detailsList}>
-              <ReviewKeyValueRow label="Destination" value={receiveCountryName} />
-              <ReviewKeyValueRow label="Method" value={transactionData.service || "Wallet"} />
-              <ReviewKeyValueRow label="Provider" value={transactionData.provider || "-"} />
-            </View>
-
-            <View style={styles.reviewDivider} />
-            <Text style={styles.sectionTitle}>Pricing</Text>
-            <View style={styles.detailsList}>
-              <ReviewKeyValueRow label="You send" value={sendAmountLabel.replace(".", ",")} />
-              <ReviewKeyValueRow
-                label="Exchange rate"
-                value={`1 ${transactionData.sendCurrency} = ${transactionData.exchangeRate.toFixed(4).replace(".", ",")} ${transactionData.receiveCurrency}`}
-              />
-              <ReviewKeyValueRow
-                label={`${transactionData.recipient.firstName || "Recipient"} gets`}
-                value={recipientGetsLabel.replace(".", ",")}
-              />
-              <ReviewKeyValueRow label="Fee" value={feeLabel.replace(".", ",")} />
-            </View>
-
-            <View style={styles.reviewDivider} />
-            <View style={styles.totalInlineRow}>
-              <Text style={styles.totalInlineLabel}>You pay</Text>
-              <Text style={styles.totalInlineValue}>{totalLabel.replace(".", ",")}</Text>
-            </View>
-          </View>
+          {confirmationPending ? (
+            <FintechInlineMessage
+              tone="warning"
+              title="Payment submitted, confirmation still pending"
+              text="If the status has not updated, retry confirmation below."
+            />
+          ) : null}
 
           {paymentSetupError && !loading ? (
-            <View style={styles.alertCardError}>
-              <Ionicons name="alert-circle-outline" size={18} color={fintechColors.danger} />
-              <Text style={styles.alertTextError}>{paymentSetupError}</Text>
-            </View>
+            <FintechInlineMessage
+              tone="danger"
+              title="Checkout blocked"
+              text={paymentSetupError}
+            />
           ) : null}
-        </ScrollView>
+      </ScrollView>
 
-        <View style={[styles.footerCard, { paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={fintechColors.primary} />
-              <Text style={styles.loadingText}>
-                {isConfirmingTransfer ? "Confirming your transfer..." : "Setting up secure payment..."}
-              </Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.footerTop}>
-                <Text style={styles.footerCaption}>Total to pay</Text>
-                <Text style={styles.footerValue}>{totalLabel}</Text>
-              </View>
-
-              <View style={styles.buttonContainer}>
-                {confirmationPending ? (
-                  <FintechPrimaryButton
-                    style={styles.warningButton}
-                    onPress={handleRetryConfirmation}
-                    disabled={loading || !pendingConfirmationRecord}
-                  >
-                    <Text style={styles.primaryButtonText}>Retry Confirmation</Text>
-                  </FintechPrimaryButton>
-                ) : (
-                  <FintechPrimaryButton onPress={presentPayment} disabled={loading || isConfirmingTransfer}>
-                    <Text style={styles.primaryButtonText}>Confirm & Pay</Text>
-                  </FintechPrimaryButton>
-                )}
-              </View>
-            </>
-          )}
-        </View>
-      </View>
-    </SafeAreaView>
-  );
-}
-
-function CountryFlag({ country }: { country: string }) {
-  if (country === "Norway") {
-    return (
-      <View style={[styles.flagBox, styles.flagNorway]}>
-        <View style={styles.flagNorwayVertical} />
-        <View style={styles.flagNorwayHorizontal} />
-      </View>
-    );
-  }
-
-  if (country === "Somalia") {
-    return (
-      <View style={[styles.flagBox, styles.flagSomalia]}>
-        <Ionicons name="star" size={9} color="#FFFFFF" />
-      </View>
-    );
-  }
-
-  return (
-    <View style={[styles.flagBox, styles.flagDefault]}>
-      <Text style={styles.flagText}>{country.slice(0, 2).toUpperCase()}</Text>
-    </View>
-  );
-}
-
-function ReviewKeyValueRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.reviewKeyValueRow}>
-      <Text style={styles.reviewKeyValueLabel}>{label}</Text>
-      <Text style={styles.reviewKeyValueValue}>{value}</Text>
-    </View>
+      <FintechStickyActionArea style={styles.footer}>
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={fintechColors.primary} />
+            <Text style={styles.loadingText}>
+              {isConfirmingTransfer
+                ? "Confirming your transfer safely..."
+                : "Preparing secure checkout..."}
+            </Text>
+          </View>
+        ) : (
+          <>
+            <FintechPrimaryButton
+              label={
+                confirmationPending ? "Retry confirmation" : "Confirm payment"
+              }
+              onPress={
+                confirmationPending ? handleRetryConfirmation : presentPayment
+              }
+              style={styles.compactButton}
+              textStyle={styles.compactButtonText}
+              disabled={
+                loading ||
+                isConfirmingTransfer ||
+                (confirmationPending && !pendingConfirmationRecord)
+              }
+            />
+          </>
+        )}
+      </FintechStickyActionArea>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#2F2B23",
-  },
   container: {
     flex: 1,
-    backgroundColor: "#2F2B23",
-    paddingHorizontal: 16,
+    paddingTop: fintechSpacing.sm,
   },
-  closeButton: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 18,
-    backgroundColor: "#F7F8FA",
-    marginBottom: 10,
-  },
-  screenLabel: {
-    fontSize: 15,
-    color: "#C9C1B2",
-    marginBottom: 2,
-  },
-  screenTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "800",
-    color: "#F8F6F0",
-    marginBottom: 8,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    gap: 8,
-  },
-  amountSummaryCard: {
-    backgroundColor: "#3A362B",
-    borderRadius: 22,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#4B453A",
-    padding: 14,
-    gap: 10,
-  },
-  amountSummaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  amountSummaryMeta: {
-    flex: 1,
-    gap: 4,
-  },
-  amountSummaryLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#F3F1EA",
-  },
-  amountSummaryValue: {
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: "800",
-    color: "#F8F6F0",
-  },
-  amountSummaryValueReceive: {
-    color: "#F8F6F0",
-  },
-  currencyBadge: {
-    minWidth: 88,
-    flexDirection: "row",
+    borderColor: fintechColors.border,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
-    backgroundColor: "#4A4436",
+    backgroundColor: fintechColors.surface,
   },
-  currencyBadgeReceive: {
-    backgroundColor: "#E8F7EE",
-  },
-  currencyBadgeText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#F8F6F0",
-  },
-  currencyBadgeTextReceive: {
-    color: "#F8F6F0",
-  },
-  amountCardValue: {
-    flex: 1,
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#F8F6F0",
-  },
-  flagBox: {
-    width: 24,
-    height: 18,
-    borderRadius: 4,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  flagNorway: {
-    backgroundColor: "#ED3943",
-  },
-  flagNorwayVertical: {
-    position: "absolute",
-    left: 6,
-    width: 5,
-    height: "100%",
-    backgroundColor: "#1E4D99",
-    borderLeftWidth: 1.5,
-    borderRightWidth: 1.5,
-    borderColor: "#FFFFFF",
-  },
-  flagNorwayHorizontal: {
-    position: "absolute",
-    top: 6,
-    width: "100%",
-    height: 4,
-    backgroundColor: "#1E4D99",
-    borderTopWidth: 1.5,
-    borderBottomWidth: 1.5,
-    borderColor: "#FFFFFF",
-  },
-  flagSomalia: {
-    backgroundColor: "#3B86DA",
-  },
-  flagDefault: {
-    backgroundColor: "#D7E7F8",
-  },
-  flagText: {
-    fontSize: 8,
-    fontWeight: "700",
-    color: "#21507C",
-  },
-  reviewCard: {
-    backgroundColor: "#3A362B",
-    borderRadius: 22,
+  progress: { marginTop: fintechSpacing.sm, marginBottom: fintechSpacing.sm },
+  scrollView: { flex: 1, marginTop: fintechSpacing.xs },
+  scrollContent: { flexGrow: 1, gap: fintechSpacing.sm, paddingBottom: fintechSpacing.md },
+  headerTitle: { fontSize: 20, lineHeight: 24 },
+  headerSubtitle: { fontSize: 12, lineHeight: 16 },
+  amountCard: {
+    backgroundColor: fintechColors.surface,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#4B453A",
-    padding: 14,
-    gap: 12,
+    borderColor: fintechColors.border,
+    padding: fintechSpacing.md,
+    gap: fintechSpacing.xs,
   },
-  reviewValueStrong: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#F8F6F0",
-    flexShrink: 1,
+  amountLabel: { fontSize: 11, fontWeight: "700", color: fintechColors.textMuted, textTransform: "uppercase", letterSpacing: 0.6 },
+  amountRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fintechSpacing.sm },
+  amountValue: { flex: 1, fontSize: 22, fontWeight: "800", color: fintechColors.text },
+  amountCurrency: { paddingHorizontal: fintechSpacing.sm, paddingVertical: fintechSpacing.xs, borderRadius: 12, backgroundColor: fintechColors.surfaceStrong, borderWidth: 1, borderColor: fintechColors.border },
+  amountCurrencyText: { fontSize: 12, fontWeight: "800", color: fintechColors.text },
+  amountMeta: { fontSize: 12, color: fintechColors.textMuted },
+  sectionTitle: { fontSize: 13 },
+  sectionNote: { fontSize: 11, lineHeight: 14 },
+  footer: {
+    paddingTop: fintechSpacing.md,
+    borderTopWidth: 1,
+    borderTopColor: fintechColors.border,
   },
-  personBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#F4DF78",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  personBadgeText: {
-    fontSize: 12,
-    color: "#2F2B23",
-    fontWeight: "600",
-  },
-  reviewDivider: {
-    height: 1,
-    backgroundColor: "#4B453A",
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  detailsList: {
-    gap: 6,
-  },
-  reviewKeyValueRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  reviewKeyValueLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: "#F3F1EA",
-  },
-  reviewKeyValueValue: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    textAlign: "right",
-  },
-  reviewRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  reviewRowContent: {
-    flex: 1,
-    gap: 2,
-  },
-  reviewSubtext: {
-    fontSize: 13,
-    color: "#F1E8CF",
-  },
-  totalInlineRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  totalInlineLabel: {
-    fontSize: 15,
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-  totalInlineValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#F8F6F0",
-  },
-  alertCardError: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#FEF2F2",
-    borderRadius: 14,
-    padding: 14,
-  },
-  alertTextError: {
-    flex: 1,
-    fontSize: 14,
-    color: fintechColors.danger,
-    fontWeight: "500",
-  },
-  footerCard: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 0,
-    backgroundColor: "#3A362B",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#4B453A",
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  footerTop: {
-    gap: 4,
-    marginBottom: 8,
-  },
-  footerCaption: {
-    fontSize: 12,
-    color: "#F3F1EA",
-  },
-  footerValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#F8F6F0",
-  },
-  buttonContainer: {
-    gap: 6,
-  },
-  loadingContainer: {
-    alignItems: "center",
-    paddingVertical: 14,
-  },
+  loadingWrap: { alignItems: "center", paddingVertical: 8 },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: "#F3F1EA",
+    color: fintechColors.textMuted,
     textAlign: "center",
   },
-  warningButton: {
-    backgroundColor: "#C2410C",
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
+  compactButton: { minHeight: 48, borderRadius: 14 },
+  compactButtonText: { fontSize: 14 },
 });

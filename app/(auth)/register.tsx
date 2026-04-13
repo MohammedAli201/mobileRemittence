@@ -1,24 +1,21 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { KeyboardScrollScreen } from '../../components/ui/layout';
 import {
-  FintechHeroCard,
-  FintechInlineMessage,
   FintechPrimaryButton,
   FintechScreenHeader,
-  FintechStatusPill,
   FintechTextField,
-  FintechTrustRow,
+  FintechSectionCard,
   fintechColors,
+  fintechSpacing,
 } from '../../components/ui/fintech';
 import { AuthService } from '../../services/apiClient';
 
@@ -26,9 +23,24 @@ const emailRegex = /^\S+@\S+\.\S+$/;
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [countrySendingFrom, setCountrySendingFrom] = useState('Norway');
+  const [nationalIdentityNumber, setNationalIdentityNumber] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [postCode, setPostCode] = useState('');
+  const [city, setCity] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [baseCurrency, setBaseCurrency] = useState('NOK');
+  const [countryCode, setCountryCode] = useState('NO');
+  const [pin, setPin] = useState('');
+  const [ipAddress, setIpAddress] = useState('');
+  const [visitorId, setVisitorId] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const emailError = useMemo(() => {
@@ -41,23 +53,52 @@ export default function RegisterScreen() {
     return password.length >= 8 ? '' : 'Use at least 8 characters.';
   }, [password]);
 
+  const passwordsMatch = password === confirmPassword;
   const isValid =
-    fullName.trim().length >= 2 &&
+    firstName.trim().length >= 2 &&
+    lastName.trim().length >= 2 &&
     emailRegex.test(email.trim()) &&
-    password.length >= 8;
+    password.length >= 8 &&
+    passwordsMatch &&
+    dateOfBirth.trim().length >= 8 &&
+    countrySendingFrom.trim().length >= 2 &&
+    nationalIdentityNumber.trim().length >= 6 &&
+    streetAddress.trim().length >= 3 &&
+    postCode.trim().length >= 3 &&
+    city.trim().length >= 2 &&
+    phoneNumber.trim().length >= 6 &&
+    baseCurrency.trim().length >= 3 &&
+    countryCode.trim().length >= 2 &&
+    pin.trim().length >= 4 &&
+    termsAccepted;
 
   const handleRegister = async () => {
     if (!isValid) {
-      Alert.alert('Check your details', 'Enter your full name, valid email, and a stronger password.');
+      Alert.alert('Check your details', 'Complete all fields and accept the terms.');
       return;
     }
 
     setLoading(true);
     try {
       await AuthService.register({
-        fullName: fullName.trim(),
         email: email.trim(),
         password,
+        confirmPassword,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        dateOfBirth: dateOfBirth.trim(),
+        countrySendingFrom: countrySendingFrom.trim(),
+        nationalIdentityNumber: nationalIdentityNumber.trim(),
+        streetAddress: streetAddress.trim(),
+        postCode: postCode.trim(),
+        city: city.trim(),
+        phoneNumber: phoneNumber.trim(),
+        baseCurrency: baseCurrency.trim(),
+        countryCode: countryCode.trim(),
+        pin: pin.trim(),
+        IpAddress: ipAddress.trim(),
+        VisitorId: visitorId.trim(),
+        termsAccepted,
       });
 
       Alert.alert(
@@ -73,56 +114,164 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <View style={styles.container}>
-          <FintechScreenHeader
-            eyebrow="Create Account"
-            title="Start sending in minutes"
-            subtitle="Minimal setup, secure onboarding, clear costs."
-            right={<FintechStatusPill icon="shield-checkmark-outline" label="Regulated" tone="success" />}
-          />
+    <KeyboardScrollScreen contentStyle={styles.scrollContainer}>
+        <FintechScreenHeader
+          eyebrow="Create Account"
+          title="Create your account"
+          subtitle="Complete the details below to get started."
+          titleStyle={styles.headerTitle}
+          subtitleStyle={styles.headerSubtitle}
+        />
 
-          <FintechHeroCard
-            title="Open your account"
-            subtitle="Create your profile in under 30 seconds."
-          >
-            <View style={styles.form}>
-              <FintechTextField
-                label="Full name"
-                icon="person-outline"
-                placeholder="Jane Doe"
-                value={fullName}
-                onChangeText={setFullName}
-              />
-              <FintechTextField
-                label="Email"
-                icon="mail-outline"
-                placeholder="you@example.com"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-                error={emailError || undefined}
-              />
-              <FintechTextField
-                label="Password"
-                icon="lock-closed-outline"
-                placeholder="At least 8 characters"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-                error={passwordError || undefined}
-              />
-            </View>
-          </FintechHeroCard>
-
-          <FintechInlineMessage text="Secure and regulated transfers. Fees and exchange rates are shown before payment." />
+        <FintechSectionCard>
+          <View style={styles.form}>
+            <FintechTextField
+              label="First name"
+              icon="person-outline"
+              placeholder="Hussein"
+              value={firstName}
+              onChangeText={setFirstName}
+            />
+            <FintechTextField
+              label="Last name"
+              icon="person-outline"
+              placeholder="Warsame"
+              value={lastName}
+              onChangeText={setLastName}
+            />
+            <FintechTextField
+              label="Email"
+              icon="mail-outline"
+              placeholder="you@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              error={emailError || undefined}
+            />
+            <FintechTextField
+              label="Password"
+              icon="lock-closed-outline"
+              placeholder="At least 8 characters"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              error={passwordError || undefined}
+            />
+            <FintechTextField
+              label="Confirm password"
+              icon="lock-closed-outline"
+              placeholder="Re-enter password"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              error={passwordsMatch || !confirmPassword ? undefined : 'Passwords do not match.'}
+            />
+            <FintechTextField
+              label="Date of birth"
+              icon="calendar-outline"
+              placeholder="YYYY-MM-DD"
+              value={dateOfBirth}
+              onChangeText={setDateOfBirth}
+            />
+            <FintechTextField
+              label="Country sending from"
+              icon="flag-outline"
+              placeholder="Norway"
+              value={countrySendingFrom}
+              onChangeText={setCountrySendingFrom}
+            />
+            <FintechTextField
+              label="National ID number"
+              icon="card-outline"
+              placeholder="12345678888"
+              value={nationalIdentityNumber}
+              onChangeText={setNationalIdentityNumber}
+            />
+            <FintechTextField
+              label="Street address"
+              icon="home-outline"
+              placeholder="Grønland 83"
+              value={streetAddress}
+              onChangeText={setStreetAddress}
+            />
+            <FintechTextField
+              label="Post code"
+              icon="location-outline"
+              placeholder="0190"
+              value={postCode}
+              onChangeText={setPostCode}
+            />
+            <FintechTextField
+              label="City"
+              icon="business-outline"
+              placeholder="Oslo"
+              value={city}
+              onChangeText={setCity}
+            />
+            <FintechTextField
+              label="Phone number"
+              icon="call-outline"
+              placeholder="+4798765432"
+              keyboardType="phone-pad"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+            />
+            <FintechTextField
+              label="Base currency"
+              icon="cash-outline"
+              placeholder="NOK"
+              value={baseCurrency}
+              onChangeText={setBaseCurrency}
+            />
+            <FintechTextField
+              label="Country code"
+              icon="globe-outline"
+              placeholder="NO"
+              value={countryCode}
+              onChangeText={setCountryCode}
+              autoCapitalize="characters"
+            />
+            <FintechTextField
+              label="6-digit PIN"
+              icon="keypad-outline"
+              placeholder="123456"
+              secureTextEntry
+              keyboardType="number-pad"
+              value={pin}
+              onChangeText={setPin}
+            />
+            <FintechTextField
+              label="IP address"
+              icon="navigate-outline"
+              placeholder="123.243.3332"
+              value={ipAddress}
+              onChangeText={setIpAddress}
+            />
+            <FintechTextField
+              label="Visitor ID"
+              icon="finger-print-outline"
+              placeholder="125255"
+              value={visitorId}
+              onChangeText={setVisitorId}
+            />
+          </View>
+        </FintechSectionCard>
 
           <View style={styles.footer}>
+            <View style={styles.termsRow}>
+              <TouchableOpacity
+                style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}
+                onPress={() => setTermsAccepted((current) => !current)}
+                activeOpacity={0.8}
+              >
+                {termsAccepted ? (
+                  <Ionicons name="checkmark" size={14} color={fintechColors.background} />
+                ) : null}
+              </TouchableOpacity>
+              <Text style={styles.termsText}>I accept the terms and conditions.</Text>
+            </View>
+
             <FintechPrimaryButton onPress={handleRegister} loading={loading} disabled={!isValid || loading}>
               Create account
             </FintechPrimaryButton>
@@ -132,42 +281,58 @@ export default function RegisterScreen() {
               <Text style={styles.loginLink}>Sign in</Text>
             </TouchableOpacity>
 
-            <FintechTrustRow
-              icon="lock-closed-outline"
-              title="Secure & regulated transfers"
-              text="Account access, payment review, and transfer confirmation stay protected end to end."
-            />
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </KeyboardScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: fintechColors.background,
-  },
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
+  scrollContainer: {
     justifyContent: 'space-between',
-    padding: 24,
-    gap: 16,
+    gap: fintechSpacing.lg,
+  },
+  headerTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   form: {
-    gap: 14,
+    gap: fintechSpacing.md,
   },
   footer: {
-    gap: 14,
+    gap: fintechSpacing.md,
+  },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: fintechSpacing.sm,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: fintechColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: fintechColors.surface,
+  },
+  checkboxChecked: {
+    backgroundColor: fintechColors.primary,
+    borderColor: fintechColors.primary,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 13,
+    color: fintechColors.textMuted,
   },
   loginRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
+    gap: fintechSpacing.xs,
   },
   loginLabel: {
     fontSize: 14,
