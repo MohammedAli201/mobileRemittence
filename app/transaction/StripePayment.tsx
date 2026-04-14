@@ -68,11 +68,20 @@ const getRecipientName = (firstName: string, lastName: string) =>
 
 const PENDING_TRANSFER_CONFIRMATION_KEY = "pending_transfer_confirmation_v1";
 const cardFieldStyle = {
-  backgroundColor: fintechColors.surfaceAlt,
+  backgroundColor: fintechColors.surface,
   textColor: fintechColors.text,
-  placeholderColor: fintechColors.textSubtle,
+  placeholderColor: fintechColors.textMuted,
   borderRadius: fintechRadius.md,
   fontSize: 16,
+};
+
+const paymentColors = {
+  heading: fintechColors.text,
+  subtext: fintechColors.textMuted,
+  border: fintechColors.borderStrong,
+  surface: fintechColors.surface,
+  surfaceAlt: fintechColors.surfaceStrong,
+  cta: fintechColors.primary,
 };
 
 export default function StripePaymentScreen() {
@@ -243,13 +252,13 @@ export default function StripePaymentScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.providerBar}>
-        <Text style={styles.providerLeft}>JubaPay</Text>
-        <View style={styles.providerRight}>
-          <Ionicons name="lock-closed" size={12} color={fintechColors.textMuted} />
-          <Text style={styles.providerRightText}>Secure payment for JubaPay</Text>
+        <View style={styles.providerBar}>
+          <Text style={styles.providerLeft}>JubaPay</Text>
+          <View style={styles.providerRight}>
+            <Ionicons name="lock-closed" size={12} color={fintechColors.textMuted} />
+            <Text style={styles.providerRightText}>Secure payment for JubaPay</Text>
+          </View>
         </View>
-      </View>
 
       <View style={styles.summaryRow}>
         <View>
@@ -304,21 +313,21 @@ export default function StripePaymentScreen() {
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color={fintechColors.primary} />
-            <Text style={styles.loadingText}>JubaPay is processing payment...</Text>
-          </View>
-        ) : (
-          <>
-            <FintechPrimaryButton
-              onPress={handlePay}
-              disabled={!cardComplete || !params.clientSecret}
-              style={!cardComplete ? styles.disabledButton : undefined}
-            >
-              <Text style={styles.payButtonText}>{`Pay ${params.amount || ""}`.trim()}</Text>
-            </FintechPrimaryButton>
-            <Text style={styles.brandText}>JubaPay</Text>
-          </>
-        )}
-      </View>
+              <Text style={styles.loadingText}>JubaPay is processing payment...</Text>
+            </View>
+          ) : (
+            <>
+              <FintechPrimaryButton
+                onPress={handlePay}
+                disabled={!cardComplete || !params.clientSecret}
+                style={!cardComplete ? styles.disabledButton : undefined}
+              >
+                <Text style={styles.payButtonText}>{`Pay ${params.amount || ""}`.trim()}</Text>
+              </FintechPrimaryButton>
+              <Text style={styles.brandText}>JubaPay</Text>
+            </>
+          )}
+        </View>
     </KeyboardScrollScreen>
   );
 }
@@ -347,7 +356,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: fintechColors.text,
+    color: paymentColors.heading,
   },
   headerSpacer: {
     width: 36,
@@ -358,13 +367,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: fintechColors.border,
+    borderColor: paymentColors.border,
     paddingVertical: fintechSpacing.sm,
     gap: fintechSpacing.sm,
   },
   providerLeft: {
     fontSize: 12,
-    color: fintechColors.textMuted,
+    color: paymentColors.subtext,
   },
   providerRight: {
     flexDirection: "row",
@@ -374,7 +383,7 @@ const styles = StyleSheet.create({
   },
   providerRightText: {
     fontSize: 12,
-    color: fintechColors.textMuted,
+    color: paymentColors.subtext,
   },
   summaryRow: {
     flexDirection: "row",
@@ -383,37 +392,37 @@ const styles = StyleSheet.create({
     gap: fintechSpacing.md,
   },
   amountText: {
-    fontSize: 19,
+    fontSize: 22,
     fontWeight: "800",
-    color: fintechColors.text,
+    color: paymentColors.heading,
     marginBottom: fintechSpacing.xs,
   },
   orderText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    color: fintechColors.textMuted,
+    color: paymentColors.subtext,
   },
   languageBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: fintechSpacing.xs,
     borderWidth: 1,
-    borderColor: fintechColors.border,
+    borderColor: paymentColors.border,
     borderRadius: fintechRadius.md,
     paddingHorizontal: fintechSpacing.sm,
     paddingVertical: fintechSpacing.xs,
-    backgroundColor: fintechColors.surface,
+    backgroundColor: paymentColors.surface,
   },
   languageText: {
     fontSize: 14,
     fontWeight: "700",
-    color: fintechColors.text,
+    color: paymentColors.heading,
   },
   cardShell: {
-    backgroundColor: fintechColors.surface,
+    backgroundColor: paymentColors.surface,
     borderRadius: fintechRadius.lg,
     borderWidth: 1,
-    borderColor: fintechColors.border,
+    borderColor: paymentColors.border,
     padding: fintechSpacing.md,
     gap: fintechSpacing.md,
     shadowColor: fintechColors.shadow,
@@ -423,15 +432,17 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardFieldWrap: {
-    backgroundColor: fintechColors.surfaceAlt,
+    backgroundColor: paymentColors.surfaceAlt,
     borderRadius: fintechRadius.md,
+    borderWidth: 1,
+    borderColor: paymentColors.border,
     paddingHorizontal: fintechSpacing.md,
     paddingTop: fintechSpacing.md,
     paddingBottom: fintechSpacing.xs,
   },
   inputLabel: {
     fontSize: 12,
-    color: fintechColors.textSubtle,
+    color: paymentColors.subtext,
     marginBottom: fintechSpacing.xs,
   },
   cardField: {
@@ -439,8 +450,10 @@ const styles = StyleSheet.create({
     height: 42,
   },
   nameFieldWrap: {
-    backgroundColor: fintechColors.surfaceAlt,
+    backgroundColor: paymentColors.surfaceAlt,
     borderRadius: fintechRadius.md,
+    borderWidth: 1,
+    borderColor: paymentColors.border,
     paddingHorizontal: fintechSpacing.md,
     paddingTop: fintechSpacing.md,
     paddingBottom: fintechSpacing.sm,
@@ -454,7 +467,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: "700",
-    color: fintechColors.text,
+    color: paymentColors.heading,
     paddingVertical: 0,
   },
   saveRow: {
@@ -464,25 +477,26 @@ const styles = StyleSheet.create({
   },
   saveLabel: {
     fontSize: 14,
-    color: fintechColors.textMuted,
+    color: paymentColors.subtext,
   },
   footer: {
     paddingTop: fintechSpacing.md,
     gap: fintechSpacing.sm,
   },
   disabledButton: {
-    backgroundColor: fintechColors.surfaceAlt,
+    backgroundColor: paymentColors.cta,
+    opacity: 0.7,
   },
   payButtonText: {
-    color: fintechColors.background,
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   brandText: {
     textAlign: "center",
     fontSize: 14,
     fontWeight: "700",
-    color: fintechColors.primary,
+    color: paymentColors.subtext,
   },
   loadingWrap: {
     alignItems: "center",
@@ -491,6 +505,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: fintechColors.textMuted,
+    color: paymentColors.subtext,
   },
 });
