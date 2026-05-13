@@ -41,6 +41,15 @@ const countryCodeToNameMap: Record<CountryCode, string> = {
   TZ: "Tanzania",
 };
 
+const countryCurrencyMap: Record<CountryCode, string> = {
+  NO: "NOK",
+  SO: "USD",
+  KE: "KES",
+  ET: "ETB",
+  UG: "UGX",
+  TZ: "TZS",
+};
+
 export const normalizeCountryCode = (value: string): CountryCode => {
   const normalized = value.trim().toUpperCase();
   return countryNameToCodeMap[normalized] || "SO";
@@ -48,6 +57,9 @@ export const normalizeCountryCode = (value: string): CountryCode => {
 
 export const getCountryNameFromCode = (code: string) =>
   countryCodeToNameMap[normalizeCountryCode(code)];
+
+export const getCurrencyForCountry = (country: string) =>
+  countryCurrencyMap[normalizeCountryCode(country)];
 
 export const normalizePersonName = (value: string) => value.trim().toUpperCase();
 

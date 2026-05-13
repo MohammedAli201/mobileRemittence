@@ -3,16 +3,40 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
-  FintechInfoRow,
   FintechPrimaryButton,
-  FintechScreenHeader,
-  FintechSectionBlock,
   FintechStatusPill,
   fintechColors,
   fintechSpacing,
 } from '../../components/ui/fintech';
 import { ScrollScreen } from '../../components/ui/layout';
 import { useUser } from '../../context/UserContext';
+
+const menuSections = [
+  {
+    title: 'Accounts',
+    subtitle: 'Upload document, My details, My recipients',
+    icon: 'person-circle-outline' as const,
+    route: '/profile/ProfileScreen',
+  },
+  {
+    title: 'JubaPay',
+    subtitle: 'About us, Settings',
+    icon: 'information-circle-outline' as const,
+    route: '/support/about',
+  },
+  {
+    title: 'Legal',
+    subtitle: 'Terms and conditions, Privacy policy',
+    icon: 'document-text-outline' as const,
+    route: '/support/legal',
+  },
+  {
+    title: 'Help and Support',
+    subtitle: 'Contact us, App version v2.8.1 (91)',
+    icon: 'help-circle-outline' as const,
+    route: '/support/help-center',
+  },
+];
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -23,107 +47,111 @@ export default function ProfileScreen() {
     router.replace('/(auth)/welcome');
   };
 
-  const menuSections = [
-    {
-      title: 'Accounts',
-      subtitle: 'Upload document, My details, My recipients, My number',
-      icon: 'person-circle-outline' as const,
-      route: '/profile/ProfileScreen',
-    },
-    {
-      title: 'PaySii',
-      subtitle: 'About us, Settings',
-      icon: 'information-circle-outline' as const,
-      route: '/support/about',
-    },
-    {
-      title: 'Legal',
-      subtitle: 'Terms and conditions, Privacy policy, Complaints policy',
-      icon: 'document-text-outline' as const,
-      route: '/support/legal',
-    },
-    {
-      title: 'Help and Support',
-      subtitle: 'Contact us, App version v2.8.1 (91)',
-      icon: 'help-circle-outline' as const,
-      route: '/support/help-center',
-    },
-  ];
+  const name = user?.firstName || user?.FirstName || 'Account holder';
+  const email = user?.email || 'No email';
+  const initials = name.trim().split(/\s+/).map((p: string) => p[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <ScrollScreen contentStyle={styles.container}>
-      <FintechScreenHeader
-        eyebrow="Profile"
-        title="Account"
-        subtitle="Your details, settings, and support."
-        right={(
-          <FintechStatusPill
-            icon="shield-checkmark-outline"
-            label={user?.isKycVerified ? 'Verified' : 'KYC pending'}
-            tone={user?.isKycVerified ? 'success' : 'warning'}
-          />
-        )}
-      />
-
-        <FintechSectionBlock>
-          <FintechInfoRow label="Name" value={user?.firstName || 'Account holder'} />
-          <FintechInfoRow label="Email" value={user?.email || 'No email'} />
-        </FintechSectionBlock>
-
-        <View style={styles.menuList}>
-          {menuSections.map((item) => (
-            <TouchableOpacity
-              key={item.title}
-              style={styles.menuRow}
-              onPress={() => item.route && router.push(item.route)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.menuIcon}>
-                <Ionicons name={item.icon} size={18} color={fintechColors.primary} />
-              </View>
-              <View style={styles.menuCopy}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+      {/* Header */}
+      <View style={styles.profileHeader}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
+        <View style={styles.profileInfo}>
+          <Text style={styles.profileName}>{name}</Text>
+          <Text style={styles.profileEmail}>{email}</Text>
+        </View>
+        <FintechStatusPill
+          icon="shield-checkmark-outline"
+          label={user?.isKycVerified ? 'Verified' : 'Pending'}
+          tone={user?.isKycVerified ? 'success' : 'warning'}
+        />
+      </View>
 
-      <FintechPrimaryButton style={styles.logoutButton} label="Log out" onPress={handleLogout} />
+      {/* Menu */}
+      <View style={styles.menu}>
+        {menuSections.map((item, index) => (
+          <TouchableOpacity
+            key={item.title}
+            style={[styles.menuRow, index > 0 && styles.menuRowDivider]}
+            onPress={() => item.route && router.push(item.route)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuIcon}>
+              <Ionicons name={item.icon} size={20} color={fintechColors.primary} />
+            </View>
+            <View style={styles.menuCopy}>
+              <Text style={styles.menuTitle}>{item.title}</Text>
+              <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={fintechColors.textSubtle} />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <FintechPrimaryButton style={styles.logoutBtn} label="Log out" onPress={handleLogout} />
     </ScrollScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: fintechSpacing.lg,
-    paddingTop: fintechSpacing.sm,
+    gap: fintechSpacing.xl,
+    paddingTop: fintechSpacing.md,
   },
-  menuList: {
-    gap: fintechSpacing.sm,
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: fintechSpacing.md,
   },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: fintechColors.primaryStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  profileInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  profileName: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: fintechColors.text,
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: fintechColors.textMuted,
+  },
+  menu: {},
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: fintechSpacing.sm,
-    padding: fintechSpacing.md,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    backgroundColor: fintechColors.surface,
+    gap: fintechSpacing.md,
+    paddingVertical: fintechSpacing.md,
+  },
+  menuRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: fintechColors.border,
   },
   menuIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: fintechColors.surfaceAlt,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: fintechColors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuCopy: { flex: 1, gap: 2 },
-  menuTitle: { fontSize: 14, fontWeight: '700', color: fintechColors.text },
+  menuTitle: { fontSize: 15, fontWeight: '700', color: fintechColors.text },
   menuSubtitle: { fontSize: 12, color: fintechColors.textMuted },
-  logoutButton: {
-    marginTop: fintechSpacing.xs,
-  },
+  logoutBtn: { marginTop: fintechSpacing.xs },
 });

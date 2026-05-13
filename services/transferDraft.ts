@@ -6,6 +6,7 @@ export type TransferRecipient = RecipientProfile & {
 };
 
 export type TransferDraft = {
+  entryPoint: "direct_send" | "repeat_send";
   quoteId: string;
   sendAmount: number;
   useBonus: boolean;
@@ -29,6 +30,7 @@ export type TransferDraft = {
 const TRANSFER_DRAFT_KEY = "transfer_draft_v1";
 
 export const defaultTransferDraft: TransferDraft = {
+  entryPoint: "direct_send",
   quoteId: "",
   sendAmount: 0,
   useBonus: false,

@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ScrollScreen } from "../../components/ui/layout";
 import {
   FintechChoiceCard,
@@ -74,6 +74,13 @@ export default function EnableQuickLoginScreen() {
         <FintechPrimaryButton onPress={handleContinue}>
           Continue
         </FintechPrimaryButton>
+
+        <TouchableOpacity
+          onPress={() => router.replace("/transaction/RecentTransactions")}
+          style={styles.skipButton}
+        >
+          <Text style={styles.skipText}>Skip for now</Text>
+        </TouchableOpacity>
     </ScrollScreen>
   );
 }
@@ -93,5 +100,14 @@ const styles = StyleSheet.create({
   },
   options: {
     gap: fintechSpacing.sm,
+  },
+  skipButton: {
+    alignItems: "center",
+    paddingVertical: fintechSpacing.sm,
+  },
+  skipText: {
+    fontSize: 14,
+    color: fintechColors.textMuted,
+    fontWeight: "500",
   },
 });

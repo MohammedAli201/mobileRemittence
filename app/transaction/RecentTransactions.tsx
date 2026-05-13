@@ -1,31 +1,290 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SkeletonDashboard } from '../../components/ui/states';
 import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { FintechPrimaryButton, fintechColors, fintechSpacing } from '../../components/ui/fintech';
-import { ScrollScreen, useScreenInsets } from '../../components/ui/layout';
+  FintechTransferRow,
+  formatMoney,
+  FintechPrimaryButton,
+  fintechColors,
+  fintechRadius,
+  fintechSpacing,
+} from '../../components/ui/fintech';
+import flagMap from '../flagMap';
+import { Screen, useScreenInsets } from '../../components/ui/layout';
 import { useUser } from '../../context/UserContext';
-import { TransactionService } from '../../services/apiClient';
+import { RecipientService, TransactionService } from '../../services/apiClient';
+import {
+  createRecipientProfile,
+  getCountryNameFromCode,
+  getCurrencyForCountry,
+  normalizeCountryCode,
+  RecipientProfile,
+  TransferService,
+} from '../../services/remittance';
+import { defaultTransferDraft, mergeTransferDraft } from '../../services/transferDraft';
+
+
+type RecentTransfer = {
+  id: string;
+  name: string;
+  meta: string;
+  amount: string;
+  corridorCountry: string;
+  sendCurrency: string;
+  receiveCurrency: string;
+  sendAmount: number;
+  service: TransferService;
+  provider: string;
+  recipient: RecipientProfile | null;
+  createdAtMs: number;
+};
+
+const countryCurrencyMap: Record<string, string> = {
+  Norway: 'NOK',
+  Somalia: 'USD',
+  Kenya: 'KES',
+  Ethiopia: 'ETB',
+  Uganda: 'UGX',
+  Tanzania: 'TZS',
+};
+
+const COUNTRY_FLAG_CODE: Record<string, string> = {
+  Norway: 'no', Somalia: 'so', Kenya: 'ke',
+  Ethiopia: 'et', Uganda: 'ug', Tanzania: 'tz', Djibouti: 'dj',
+};
+
+const SERVICE_LABEL: Record<string, string> = {
+  MobileMoney: 'Mobile Money',
+  BankTransfer: 'Bank Transfer',
+  CashCollection: 'Cash Pickup',
+};
+
+const AVATAR_PALETTE = [
+  '#0A7A56', '#1555C0', '#7B2D8B', '#B5451B',
+  '#1A7A6E', '#5C6D20', '#854D0E', '#3730A3',
+];
+const getAvatarColor = (name: string) =>
+  AVATAR_PALETTE[(name.charCodeAt(0) || 65) % AVATAR_PALETTE.length];
+
+const getInitials = (name: string) =>
+  name.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('');
+
+
+const formatSignedAmount = (amount: number, currency: string) =>
+  `- ${formatMoney(amount, currency)}`;
+
+const mapService = (value?: string): TransferService => {
+  if (value === 'BankTransfer' || value === 'BankDeposit') return 'BankTransfer';
+  if (value === 'CashCollection' || value === 'CashPickup') return 'CashCollection';
+  return 'MobileMoney';
+};
+
+const normalizeResponseRows = (response: any) =>
+  Array.isArray(response)
+    ? response
+    : Array.isArray(response?.Data)
+      ? response.Data
+      : Array.isArray(response?.data)
+        ? response.data
+        : [];
+
+const normalizeLookupValue = (value: string) =>
+  value.trim().replace(/\s+/g, ' ').toLowerCase();
+
+const mergeRecipientProfiles = (
+  primary: RecipientProfile,
+  fallback: RecipientProfile,
+): RecipientProfile => ({
+  ...fallback,
+  ...primary,
+  id: primary.id || fallback.id,
+  firstName: primary.firstName || fallback.firstName,
+  lastName: primary.lastName || fallback.lastName,
+  phoneNumber: primary.phoneNumber || fallback.phoneNumber,
+  relationshipToSender: primary.relationshipToSender || fallback.relationshipToSender,
+  receivingCountry: primary.receivingCountry || fallback.receivingCountry,
+  countryOfCitizenship: primary.countryOfCitizenship || fallback.countryOfCitizenship,
+  address: primary.address || fallback.address,
+  city: primary.city || fallback.city,
+  provider: primary.provider || fallback.provider,
+  service: primary.service || fallback.service,
+});
 
 export default function RecentTransactions() {
   const router = useRouter();
   const { user } = useUser();
-  const { top, bottom } = useScreenInsets();
+  const { bottom } = useScreenInsets();
+  const [recentTransfers, setRecentTransfers] = useState<RecentTransfer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const warmRecentTransactions = async () => {
+    const warmDashboard = async () => {
       try {
-        await TransactionService.getRecentTransaction('');
-      } catch (error) {
+        const [recipientsResponse, recentResponse] = await Promise.all([
+          RecipientService.getAllRecipients(),
+          TransactionService.getRecentTransaction(''),
+        ]);
+
+        const recipientRows = normalizeResponseRows(recipientsResponse);
+        const savedRecipientLookup = new Map<string, RecipientProfile>();
+
+        recipientRows.forEach((item: any) => {
+          const firstName = String(item?.FirstName || item?.firstName || '').trim();
+          const lastName = String(item?.LastName || item?.lastName || '').trim();
+          const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+          const country = String(
+            item?.ReceivingCountry ||
+              item?.receivingCountry ||
+              item?.CountryOfCitizenship ||
+              item?.countryOfCitizenship ||
+              'SO',
+          );
+          const provider = String(item?.Provider || item?.provider || '').trim();
+          const service = mapService(String(item?.Service || item?.service || 'MobileMoney'));
+          const recipientProfile = createRecipientProfile({
+            id: String(item?.Id || item?.id || ''),
+            firstName,
+            lastName,
+            phoneNumber: String(item?.PhoneNumber || item?.phoneNumber || ''),
+            receivingCountry: normalizeCountryCode(country),
+            countryOfCitizenship: normalizeCountryCode(
+              item?.CountryOfCitizenship || item?.countryOfCitizenship || country,
+            ),
+            address: String(item?.Address || item?.address || ''),
+            city: String(item?.City || item?.city || ''),
+            provider,
+            service,
+            relationshipToSender: String(
+              item?.RelationshipToSender || item?.relationshipToSender || '',
+            ),
+          });
+
+          const lookupKey = [
+            normalizeLookupValue(fullName),
+            getCountryNameFromCode(country),
+            normalizeLookupValue(provider),
+            service,
+          ].join('|');
+
+          if (fullName) {
+            savedRecipientLookup.set(lookupKey, recipientProfile);
+          }
+        });
+
+        const recentRows = normalizeResponseRows(recentResponse);
+        const mappedTransfers = recentRows
+          .map((item: any) => {
+            const createdAt = item?.CreatedAt || item?.createdAt;
+            const created = createdAt ? new Date(createdAt) : null;
+            const createdAtMs = created && !Number.isNaN(created.getTime()) ? created.getTime() : 0;
+            const corridorCountryRaw =
+              String(
+                item?.destinationCountry ||
+                  item?.DestinationCountry ||
+                  item?.ReceivingCountry ||
+                  item?.receivingCountry ||
+                  item?.Country ||
+                  'SO',
+              );
+            const corridorCountry = getCountryNameFromCode(corridorCountryRaw);
+            const recipientName = String(
+              item?.RecipientName || item?.recipientName || item?.BeneficiaryName || 'Recipient',
+            ).trim();
+            const sendCurrency = String(item?.SendCurrency || item?.sendCurrency || 'NOK');
+            const receiveCurrency = String(
+              item?.ReceiveCurrency ||
+                item?.receiveCurrency ||
+                countryCurrencyMap[corridorCountry] ||
+                'USD',
+            );
+            const sendAmount = Number(item?.TotalAmount ?? item?.totalAmount ?? item?.SendAmount ?? 0);
+            const service = mapService(String(item?.Service || item?.service || 'MobileMoney'));
+            const provider = String(item?.Provider || item?.provider || item?.ProviderName || '');
+            const firstName = String(item?.FirstName || item?.firstName || '').trim();
+            const lastName = String(item?.LastName || item?.lastName || '').trim();
+            const [fallbackFirstName, ...fallbackLastName] = recipientName
+              .split(/\s+/)
+              .filter(Boolean);
+            const inlineRecipient = createRecipientProfile({
+              id: String(item?.RecipientId || item?.recipientId || item?.Id || item?.id || ''),
+              firstName: firstName || fallbackFirstName || '',
+              lastName: lastName || fallbackLastName.join(' '),
+              phoneNumber: String(item?.PhoneNumber || item?.phoneNumber || item?.RecipientPhoneNumber || ''),
+              receivingCountry: normalizeCountryCode(corridorCountryRaw),
+              countryOfCitizenship: normalizeCountryCode(
+                item?.CountryOfCitizenship ||
+                  item?.countryOfCitizenship ||
+                  corridorCountryRaw,
+              ),
+              address: String(item?.Address || item?.address || ''),
+              city: String(item?.City || item?.city || ''),
+              provider,
+              service,
+              relationshipToSender: String(
+                item?.RelationshipToSender || item?.relationshipToSender || '',
+              ),
+            });
+            const matchedRecipient = savedRecipientLookup.get(
+              [
+                normalizeLookupValue(recipientName),
+                corridorCountry,
+                normalizeLookupValue(provider),
+                service,
+              ].join('|'),
+            );
+            const resolvedRecipient = matchedRecipient
+              ? mergeRecipientProfiles(matchedRecipient, inlineRecipient)
+              : inlineRecipient;
+            const dateLabel =
+              createdAtMs > 0
+                ? new Date(createdAtMs).toLocaleDateString('en-US', {
+                    day: '2-digit',
+                    month: 'short',
+                  })
+                : 'Recent';
+            const timeLabel =
+              createdAtMs > 0
+                ? new Date(createdAtMs).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : '';
+
+            return {
+              id: String(item?.Id || item?.id || `${recipientName}-${createdAtMs}`),
+              name: recipientName,
+              meta: `${corridorCountry} - ${dateLabel}${timeLabel ? ` ${timeLabel}` : ''}`,
+              amount: formatSignedAmount(sendAmount, sendCurrency),
+              corridorCountry,
+              sendCurrency,
+              receiveCurrency,
+              sendAmount,
+              service,
+              provider,
+              recipient:
+                resolvedRecipient.firstName ||
+                resolvedRecipient.lastName ||
+                resolvedRecipient.phoneNumber
+                  ? resolvedRecipient
+                  : inlineRecipient.firstName || inlineRecipient.lastName || inlineRecipient.phoneNumber
+                    ? inlineRecipient
+                    : null,
+              createdAtMs,
+            } satisfies RecentTransfer;
+          })
+          .sort((a: RecentTransfer, b: RecentTransfer) => b.createdAtMs - a.createdAtMs);
+
+        setRecentTransfers(mappedTransfers.slice(0, 3));
+      } catch {
+        setRecentTransfers([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    warmRecentTransactions();
+    void warmDashboard();
   }, []);
 
   const userName =
@@ -34,333 +293,486 @@ export default function RecentTransactions() {
     (user?.email ? String(user.email).split('@')[0] : '') ||
     'Account';
 
-  return (
-    <ScrollScreen contentStyle={[styles.container, { paddingTop: top }]}>
-      <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => router.push('/profile/ProfileScreen')}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="person-outline" size={16} color={fintechColors.text} />
-            </TouchableOpacity>
-            <View style={styles.profileBlock}>
-              <View style={styles.profileAvatar}>
-                <Text style={styles.profileAvatarText}>
-                  {String(userName).slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
-              <View>
-                <Text style={styles.welcomeText}>Welcome</Text>
-                <Text style={styles.nameText}>{userName}</Text>
-              </View>
+  const visibleRecentTransfers = useMemo(
+    () => recentTransfers.slice(0, 5),
+    [recentTransfers],
+  );
+  const handleStartSend = () => {
+    mergeTransferDraft({
+      ...defaultTransferDraft,
+      entryPoint: 'direct_send',
+      sendCountry: 'Norway',
+      sendCurrency: getCurrencyForCountry('NO'),
+    });
+    router.push('/remittance/RemittanceTypeScreen');
+  };
+
+  const startRepeatTransfer = ({
+    recipient,
+    sendAmount,
+    sendCurrency,
+    receiveCurrency,
+    corridorCountry,
+    provider,
+    service,
+  }: {
+    recipient: RecipientProfile;
+    sendAmount?: number;
+    sendCurrency?: string;
+    receiveCurrency?: string;
+    corridorCountry: string;
+    provider?: string;
+    service?: TransferService;
+  }) => {
+    mergeTransferDraft({
+      entryPoint: 'repeat_send',
+      quoteId: '',
+      fees: 0,
+      totalAmount: 0,
+      receiveAmount: 0,
+      exchangeRate: 0,
+      sendAmount: Number(sendAmount || 0),
+      sendCountry: 'Norway',
+      sendCurrency: sendCurrency || 'NOK',
+      receivingCountry: corridorCountry,
+      receiveCurrency: receiveCurrency || countryCurrencyMap[corridorCountry] || 'USD',
+      provider: provider || recipient.provider || '',
+      providerName: provider || recipient.provider || '',
+      service: service || recipient.service,
+      recipient: {
+        ...recipient,
+        provider: provider || recipient.provider || '',
+        avatarColor: fintechColors.primaryStrong,
+      },
+    });
+
+    router.push('/transaction/SendMoneyScreen');
+  };
+
+  const handleRecentTransferPress = (item: RecentTransfer) => {
+    if (item.recipient) {
+      startRepeatTransfer({
+        recipient: item.recipient,
+        sendAmount: item.sendAmount,
+        sendCurrency: item.sendCurrency,
+        receiveCurrency: item.receiveCurrency,
+        corridorCountry: item.corridorCountry,
+        provider: item.provider,
+        service: item.service,
+      });
+      return;
+    }
+
+    mergeTransferDraft({
+      entryPoint: 'repeat_send',
+      quoteId: '',
+      fees: 0,
+      totalAmount: 0,
+      receiveAmount: 0,
+      exchangeRate: 0,
+      sendAmount: item.sendAmount,
+      sendCountry: 'Norway',
+      sendCurrency: item.sendCurrency,
+      receivingCountry: item.corridorCountry,
+      receiveCurrency: item.receiveCurrency,
+      provider: item.provider,
+      providerName: item.provider,
+      service: item.service,
+    });
+
+    router.push('/recipient/RecipientListScreen');
+  };
+
+    return (
+    <Screen contentStyle={styles.root}>
+      <View style={[styles.scroll, styles.scrollContent]}>
+        {isLoading ? (
+          <SkeletonDashboard />
+        ) : (
+          <>
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity
+                style={styles.profileBtn}
+                onPress={() => router.push('/profile/ProfileScreen')}
+                activeOpacity={0.88}
+              >
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarLetter}>
+                    {String(userName).slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={styles.greeting}>Good to see you</Text>
+                  <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.settingsBtn}
+                onPress={() => router.push('/support/settings')}
+                activeOpacity={0.88}
+              >
+                <Ionicons name="settings-outline" size={22} color={fintechColors.textMuted} />
+              </TouchableOpacity>
             </View>
-          </View>
 
-          <View style={styles.headerRight}>
-            <Text style={styles.brandText}>JubaPay</Text>
-          </View>
-        </View>
+            {/* Hero card */}
+            <View style={styles.heroCard}>
+              <View style={styles.heroTop}>
+                <View style={styles.heroIconWrap}>
+                  <Ionicons name="paper-plane" size={22} color={fintechColors.primary} />
+                </View>
+                <View style={styles.heroCopy}>
+                  <Text style={styles.heroTitle}>Send money abroad</Text>
+                  <Text style={styles.heroSubtitle}>
+                    Competitive rate · Transparent fees · Fast delivery
+                  </Text>
+                </View>
+              </View>
+              <FintechPrimaryButton label="Send money" onPress={handleStartSend} />
+            </View>
 
-      <View style={styles.balanceCard}>
-        <View style={styles.balanceCardTop}>
-          <Text style={styles.balanceCardLabel}>Available balance</Text>
-          <Ionicons name="eye-outline" size={18} color={fintechColors.textMuted} />
-        </View>
-        <Text style={styles.balanceAmount}>NOK 5,013.00</Text>
-        <Text style={styles.balanceSub}>Ready to send anytime.</Text>
-        <FintechPrimaryButton
-          label="Send money"
-          onPress={() => router.push('/remittance/RemittanceTypeScreen')}
-          style={styles.primaryCta}
-        />
+            {/* Recent transfers */}
+            <View style={styles.recentCard}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Recent transfers</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/transaction/transactionList')}
+                  activeOpacity={0.8}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.sectionLink}>View all</Text>
+                </TouchableOpacity>
+              </View>
+
+              {visibleRecentTransfers.length ? (
+                visibleRecentTransfers.map((item, index) => {
+                  const flagCode = COUNTRY_FLAG_CODE[item.corridorCountry];
+                  const flagSource = flagCode ? flagMap[flagCode] : undefined;
+                  const dateLabel =
+                    item.createdAtMs > 0
+                      ? new Date(item.createdAtMs).toLocaleDateString('en-US', {
+                          day: '2-digit',
+                          month: 'short',
+                        })
+                      : 'Recent';
+                  return (
+                    <FintechTransferRow
+                      key={item.id}
+                      name={item.name}
+                      meta={`${item.corridorCountry} · ${dateLabel}`}
+                      service={SERVICE_LABEL[item.service] ?? item.service}
+                      amount={item.amount}
+                      initials={getInitials(item.name) || '??'}
+                      accentColor={getAvatarColor(item.name)}
+                      flagSource={flagSource}
+                      divider={index > 0}
+                      onPress={() => handleRecentTransferPress(item)}
+                      onRepeat={() => handleRecentTransferPress(item)}
+                    />
+                  );
+                })
+              ) : (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIconWrap}>
+                    <Ionicons name="paper-plane-outline" size={28} color={fintechColors.primary} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No transfers yet</Text>
+                  <Text style={styles.emptyText}>
+                    Your completed transfers will appear here.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyAction}
+                    onPress={handleStartSend}
+                    activeOpacity={0.88}
+                  >
+                    <Text style={styles.emptyActionText}>Send your first transfer</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </>
+        )}
       </View>
 
-      <View style={styles.quickRow}>
-        <TouchableOpacity
-          style={styles.quickCard}
-          onPress={() => router.push('/recipient/RecipientListScreen')}
-          activeOpacity={0.9}
-        >
-          <Ionicons name="people-outline" size={16} color={fintechColors.text} />
-          <Text style={styles.quickCardText}>Recipients</Text>
+      {/* ── Bottom tab bar ── */}
+      <View style={[styles.tabBar, { paddingBottom: Math.max(bottom - fintechSpacing.sm, fintechSpacing.sm) }]}>
+        <TouchableOpacity style={styles.tabItem} activeOpacity={0.88}>
+          <Ionicons name="home" size={22} color={fintechColors.primary} />
+          <Text style={[styles.tabLabel, styles.tabLabelActive]}>Home</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.tabCenter} onPress={handleStartSend} activeOpacity={0.9}>
+          <View style={styles.tabCenterIcon}>
+            <Ionicons name="paper-plane" size={20} color="#FFFFFF" />
+          </View>
+          <Text style={styles.tabCenterLabel}>Send</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
-          style={styles.quickCard}
+          style={styles.tabItem}
           onPress={() => router.push('/transaction/transactionList')}
-          activeOpacity={0.9}
+          activeOpacity={0.88}
         >
-          <Ionicons name="time-outline" size={16} color={fintechColors.text} />
-          <Text style={styles.quickCardText}>History</Text>
+          <Ionicons name="receipt-outline" size={22} color={fintechColors.textMuted} />
+          <Text style={styles.tabLabel}>History</Text>
         </TouchableOpacity>
       </View>
-
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick recipients</Text>
-          <TouchableOpacity
-            onPress={() => router.push('/recipient/RecipientListScreen')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.sectionLink}>View all</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.transferRow}>
-          <TouchableOpacity
-            style={styles.addRecipientCircle}
-            onPress={() => router.push('/recipient/AddRecipientScreen')}
-            activeOpacity={0.9}
-          >
-            <Ionicons name="add" size={18} color={fintechColors.text} />
-          </TouchableOpacity>
-          <View style={styles.recipientChip}>
-            <View style={styles.recipientChipAvatar}>
-              <Text style={styles.recipientChipAvatarText}>AH</Text>
-            </View>
-            <Text style={styles.recipientChipText}>Ayaan</Text>
-          </View>
-          <View style={styles.recipientChip}>
-            <View style={styles.recipientChipAvatar}>
-              <Text style={styles.recipientChipAvatarText}>MO</Text>
-            </View>
-            <Text style={styles.recipientChipText}>Mohamed</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.sectionCardLarge}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent transfers</Text>
-          <TouchableOpacity
-            onPress={() => router.push('/transaction/transactionList')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.sectionLink}>See more</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.historyList}>
-          <TouchableOpacity style={styles.historyRow} activeOpacity={0.9}>
-            <View style={styles.historyLeft}>
-              <View style={styles.historyIconWrap}>
-                <Ionicons name="paper-plane-outline" size={18} color={fintechColors.text} />
-              </View>
-              <View>
-                <Text style={styles.historyTitle}>Ayaan H.</Text>
-                <Text style={styles.historyMeta}>Somalia • Today 08:20</Text>
-              </View>
-            </View>
-            <Text style={styles.historyNegative}>- NOK 300</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.historyRow} activeOpacity={0.9}>
-            <View style={styles.historyLeft}>
-              <View style={styles.historyIconWrap}>
-                <Ionicons name="paper-plane-outline" size={18} color={fintechColors.text} />
-              </View>
-              <View>
-                <Text style={styles.historyTitle}>Mohamed A.</Text>
-                <Text style={styles.historyMeta}>Kenya • Yesterday 17:10</Text>
-              </View>
-            </View>
-            <Text style={styles.historyNegative}>- NOK 1,200</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.historyRow} activeOpacity={0.9}>
-            <View style={styles.historyLeft}>
-              <View style={styles.historyIconWrap}>
-                <Ionicons name="paper-plane-outline" size={18} color={fintechColors.text} />
-              </View>
-              <View>
-                <Text style={styles.historyTitle}>Yusuf M.</Text>
-                <Text style={styles.historyMeta}>Ethiopia • Mar 12</Text>
-              </View>
-            </View>
-            <Text style={styles.historyNegative}>- NOK 540</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={[styles.bottomDock, { marginBottom: bottom }]}>
-          <TouchableOpacity
-            style={styles.dockItem}
-            onPress={() => router.push('/support/contact')}
-            activeOpacity={0.9}
-          >
-            <Ionicons name="headset-outline" size={18} color={fintechColors.text} />
-            <Text style={styles.dockLabel}>Contact Us</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.dockItemActive}
-            onPress={() => router.push('/remittance/RemittanceTypeScreen')}
-            activeOpacity={0.9}
-          >
-            <View style={styles.dockItemIconActive}>
-              <Ionicons name="paper-plane" size={18} color={fintechColors.background} />
-            </View>
-            <Text style={styles.dockLabelActive}>Send Money</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.dockItem}
-            onPress={() => router.push('/transaction/transactionList')}
-            activeOpacity={0.9}
-          >
-            <Ionicons name="list-outline" size={18} color={fintechColors.text} />
-            <Text style={styles.dockLabel}>Transfer</Text>
-          </TouchableOpacity>
-        </View>
-    </ScrollScreen>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  // ── Shell ──────────────────────────────────────────────────────────────────
+  root: {
+    flex: 1,
+    paddingBottom: 0,
+    paddingHorizontal: 0,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: fintechSpacing.lg,
+    paddingTop: fintechSpacing.md,
+    paddingBottom: fintechSpacing.xl,
     gap: fintechSpacing.md,
   },
-  headerRow: {
-    minHeight: 56,
+
+  // ── Header ─────────────────────────────────────────────────────────────────
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: fintechSpacing.xs,
   },
-  headerLeft: {
+  profileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: fintechSpacing.sm,
     flex: 1,
+    minWidth: 0,
   },
-  headerIconButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: fintechColors.primaryStrong,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: fintechColors.surface,
   },
-  profileBlock: {
+  avatarLetter: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  greeting: {
+    fontSize: 12,
+    color: fintechColors.textSubtle,
+    lineHeight: 16,
+  },
+  userName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: fintechColors.text,
+    lineHeight: 16,
+  },
+  settingsBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Hero card ──────────────────────────────────────────────────────────────
+  heroCard: {
+    gap: fintechSpacing.md,
+  },
+  heroTop: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: fintechSpacing.md,
+  },
+  heroIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: fintechColors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: fintechColors.text,
+    lineHeight: 22,
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: fintechColors.textMuted,
+  },
+
+  // ── Quick actions ──────────────────────────────────────────────────────────
+  quickRow: {
+    flexDirection: 'row',
     gap: fintechSpacing.sm,
   },
-  profileAvatar: {
-    width: 28,
-    height: 28,
+  quickTile: {
+    flex: 1,
+    alignItems: 'center',
+    gap: fintechSpacing.xs,
+    paddingVertical: fintechSpacing.sm,
+  },
+  quickTileIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 14,
     backgroundColor: fintechColors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileAvatarText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: fintechColors.primary,
-  },
-  welcomeText: {
-    fontSize: 10,
-    color: fintechColors.textMuted,
-    lineHeight: 12,
-  },
-  nameText: {
-    fontSize: 14,
+  quickTileLabel: {
+    fontSize: 11,
     fontWeight: '700',
-    color: fintechColors.text,
-    lineHeight: 18,
+    color: fintechColors.textMuted,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  // ── Monthly limit ──────────────────────────────────────────────────────────
+  limitCard: {
     gap: fintechSpacing.sm,
   },
-  brandText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: fintechColors.primary,
-    letterSpacing: -0.1,
-  },
-  notifyButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: fintechColors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  balanceCard: {
-    borderRadius: 20,
-    backgroundColor: fintechColors.surfaceStrong,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    paddingHorizontal: fintechSpacing.md,
-    paddingVertical: fintechSpacing.md,
-    gap: fintechSpacing.xs,
-  },
-  balanceCardTop: {
+  limitCardWarning: {},
+  limitCardDanger:  {},
+  limitHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  balanceCardLabel: {
+  limitLabel: {
     fontSize: 13,
-    color: fintechColors.textMuted,
-    fontWeight: '600',
-  },
-  balanceAmount: {
-    marginTop: fintechSpacing.xs,
-    fontSize: 26,
-    fontWeight: '800',
-    color: fintechColors.text,
-    letterSpacing: -0.6,
-  },
-  balanceSub: {
-    fontSize: 12,
+    fontWeight: '700',
     color: fintechColors.textMuted,
   },
-  primaryCta: {
-    marginTop: fintechSpacing.xs,
+  limitLabelWarning: { color: fintechColors.warning },
+  limitLabelDanger:  { color: fintechColors.danger },
+  limitBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: fintechRadius.pill,
+    backgroundColor: fintechColors.neutralSurface,
   },
-  quickRow: {
-    flexDirection: 'row',
-    gap: fintechSpacing.sm,
+  limitBadgeWarning: { backgroundColor: '#FFF4D9' },
+  limitBadgeDanger:  { backgroundColor: fintechColors.dangerSoft },
+  limitBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: fintechColors.textMuted,
   },
-  quickCard: {
-    flex: 1,
-    height: 44,
-    borderRadius: 18,
-    backgroundColor: fintechColors.surface,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
+  limitBadgeTextWarning: { color: fintechColors.warning },
+  limitBadgeTextDanger:  { color: fintechColors.danger },
+  limitAmounts: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'baseline',
     gap: fintechSpacing.xs,
   },
-  quickCardText: {
-    fontSize: 15,
-    fontWeight: '600',
+  limitUsed: {
+    fontSize: 20,
+    fontWeight: '800',
     color: fintechColors.text,
   },
-  sectionCard: {
-    borderRadius: 22,
-    backgroundColor: fintechColors.surface,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    padding: fintechSpacing.md,
+  limitSep: {
+    fontSize: 14,
+    color: fintechColors.textSubtle,
+  },
+  limitTotal: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: fintechColors.textSubtle,
+  },
+  limitTrack: {
+    height: 6,
+    borderRadius: fintechRadius.pill,
+    backgroundColor: fintechColors.surfaceStrong,
+    overflow: 'hidden',
+  },
+  limitTrackWarning: { backgroundColor: 'rgba(251,191,36,0.2)' },
+  limitTrackDanger:  { backgroundColor: 'rgba(254,202,202,0.3)' },
+  limitFill: {
+    height: '100%',
+    borderRadius: fintechRadius.pill,
+    backgroundColor: fintechColors.primary,
+  },
+  limitFillWarning: { backgroundColor: '#F59E0B' },
+  limitFillDanger:  { backgroundColor: '#EF4444' },
+  limitExceededRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: fintechSpacing.xs,
+  },
+  limitExceededText: {
+    flex: 1,
+    fontSize: 13,
+    color: fintechColors.danger,
+    fontWeight: '600',
+  },
+  limitFooter: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: fintechColors.textSubtle,
+  },
+  limitFooterWarning: { color: fintechColors.warning },
+  limitFooterDanger:  { color: fintechColors.danger },
+
+  // ── Repeat card ────────────────────────────────────────────────────────────
+  repeatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: fintechSpacing.md,
   },
-  sectionCardLarge: {
+  repeatIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: fintechColors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  repeatBody: {
     flex: 1,
-    borderRadius: 22,
-    backgroundColor: fintechColors.surface,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    padding: fintechSpacing.md,
-    gap: fintechSpacing.md,
+    minWidth: 0,
+    gap: 2,
+  },
+  repeatEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: fintechColors.primaryStrong,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  repeatName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: fintechColors.text,
+    lineHeight: 18,
+  },
+  repeatRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  repeatAmount: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: fintechColors.text,
+  },
+
+  // ── Recent transfers card ──────────────────────────────────────────────────
+  recentCard: {
+    gap: fintechSpacing.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -369,137 +781,105 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: fintechColors.text,
   },
   sectionLink: {
-    fontSize: 12,
-    color: fintechColors.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
+    color: fintechColors.primaryStrong,
   },
-  transferRow: {
-    flexDirection: 'row',
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  emptyState: {
     alignItems: 'center',
-    gap: fintechSpacing.md,
+    gap: fintechSpacing.sm,
+    paddingVertical: fintechSpacing.xl,
   },
-  addRecipientCircle: {
-    width: 40,
-    height: 40,
+  emptyIconWrap: {
+    width: 60,
+    height: 60,
     borderRadius: 20,
     backgroundColor: fintechColors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  recipientChip: {
-    alignItems: 'center',
-    gap: fintechSpacing.xs,
-  },
-  recipientChipAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: fintechColors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recipientChipAvatarDark: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: fintechColors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recipientChipAvatarText: {
-    fontSize: 13,
+  emptyTitle: {
+    fontSize: 16,
     fontWeight: '800',
     color: fintechColors.text,
   },
-  recipientChipText: {
-    fontSize: 12,
-    color: fintechColors.text,
-  },
-  historyList: {
-    gap: fintechSpacing.md,
-  },
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  historyLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: fintechSpacing.sm,
-    flex: 1,
-  },
-  historyIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: fintechColors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  historyTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: fintechColors.text,
-  },
-  historyMeta: {
-    fontSize: 11,
+  emptyText: {
+    fontSize: 13,
+    lineHeight: 19,
     color: fintechColors.textMuted,
-    marginTop: 2,
+    textAlign: 'center',
   },
-  historyNegative: {
+  emptyAction: {
+    marginTop: fintechSpacing.xs,
+    paddingHorizontal: fintechSpacing.lg,
+    paddingVertical: fintechSpacing.sm + 2,
+    borderRadius: fintechRadius.pill,
+    borderWidth: 1.5,
+    borderColor: fintechColors.primary,
+  },
+  emptyActionText: {
     fontSize: 14,
     fontWeight: '700',
-    color: fintechColors.text,
+    color: fintechColors.primary,
   },
-  historyPositive: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#49C980',
-  },
-  bottomDock: {
-    marginHorizontal: 0,
-    minHeight: 64,
-    borderRadius: 0,
+
+  // ── Bottom tab bar ─────────────────────────────────────────────────────────
+  tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
     backgroundColor: fintechColors.surface,
     borderTopWidth: 1,
-    borderColor: fintechColors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: fintechSpacing.lg,
+    borderTopColor: fintechColors.border,
+    paddingTop: fintechSpacing.sm,
   },
-  dockItem: {
+  tabItem: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    minWidth: 72,
-  },
-  dockItemActive: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    minWidth: 88,
-  },
-  dockItemIconActive: {
-    width: 38,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: fintechColors.primary,
-    alignItems: 'center',
+    gap: 3,
+    paddingVertical: fintechSpacing.xs,
+    minHeight: 44,
     justifyContent: 'center',
   },
-  dockLabel: {
+  tabLabel: {
     fontSize: 11,
-    color: fintechColors.textMuted,
     fontWeight: '600',
+    color: fintechColors.textMuted,
   },
-  dockLabelActive: {
+  tabLabelActive: {
+    color: fintechColors.primary,
+    fontWeight: '800',
+  },
+  tabCenter: {
+    alignItems: 'center',
+    gap: 3,
+    paddingVertical: fintechSpacing.xs,
+    minWidth: 80,
+    justifyContent: 'center',
+  },
+  tabCenterIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: fintechColors.primaryStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -16,
+    shadowColor: fintechColors.primaryStrong,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  tabCenterLabel: {
     fontSize: 11,
-    color: fintechColors.text,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: fintechColors.primaryStrong,
   },
 });

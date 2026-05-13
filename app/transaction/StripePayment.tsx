@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { CardField, useStripe } from "@stripe/stripe-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -7,58 +6,20 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { FintechPrimaryButton, fintechColors, fintechRadius, fintechSpacing } from "../../components/ui/fintech";
-import { KeyboardScrollScreen } from "../../components/ui/layout";
-import { useUser } from "../../context/UserContext";
-import { TransactionService } from "../../services/apiClient";
 import {
-  createTransferRecipientPayload,
-  normalizeCountryCode,
-  TransferService,
-} from "../../services/remittance";
+  FintechPrimaryButton,
+  fintechColors,
+  fintechRadius,
+  fintechSpacing,
+} from "../../components/ui/fintech";
+import { FixedFooterScreen } from "../../components/ui/layout";
+import { useUser } from "../../context/UserContext";
 import { getTransferDraft } from "../../services/transferDraft";
-
-const deliveryMethodMap: Record<string, string> = {
-  MobileMoney: "wallet",
-  BankTransfer: "bank",
-  CashCollection: "cash",
-};
-
-const countryCodeMap: Record<string, string> = {
-  Norway: "NO",
-  Somalia: "SO",
-  Kenya: "KE",
-  Ethiopia: "ET",
-  Uganda: "UG",
-  Tanzania: "TZ",
-  NO: "NO",
-  SO: "SO",
-  KE: "KE",
-  ET: "ET",
-  UG: "UG",
-  TZ: "TZ",
-};
-
-const roundTo = (value: number, decimals: number) => {
-  const factor = 10 ** decimals;
-  return Math.round((Number(value || 0) + Number.EPSILON) * factor) / factor;
-};
-
-const normalizeProviderForApi = (provider: string, service: string) => {
-  const value = (provider || "").trim().toLowerCase();
-  if (service === "MobileMoney" && (value.includes("hormuud") || value.includes("evc"))) return "EVC";
-  if (service === "MobileMoney" && value.includes("premier")) return "Premier";
-  if (service === "MobileMoney" && value.includes("dahab")) return "e-Dahab";
-  if (service === "BankTransfer" && value.includes("salam")) return "Salam Bank";
-  if (service === "CashCollection" && value.includes("juba")) return "JUBA EXPRESS";
-  return provider || "";
-};
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Something went wrong. Please try again.";
@@ -66,22 +27,21 @@ const getErrorMessage = (error: unknown) =>
 const getRecipientName = (firstName: string, lastName: string) =>
   [firstName, lastName].filter(Boolean).join(" ").trim();
 
-const PENDING_TRANSFER_CONFIRMATION_KEY = "pending_transfer_confirmation_v1";
-const cardFieldStyle = {
-  backgroundColor: fintechColors.surface,
-  textColor: fintechColors.text,
-  placeholderColor: fintechColors.textMuted,
-  borderRadius: fintechRadius.md,
-  fontSize: 16,
+const formatPaymentMethod = (value?: string) => {
+  const normalized = (value || "").trim().toLowerCase();
+  if (!normalized) return "Card";
+  if (normalized === "visa") return "Visa";
+  if (normalized === "mastercard") return "Mastercard";
+  if (normalized === "card") return "Card";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
-const paymentColors = {
-  heading: fintechColors.text,
-  subtext: fintechColors.textMuted,
-  border: fintechColors.borderStrong,
-  surface: fintechColors.surface,
-  surfaceAlt: fintechColors.surfaceStrong,
-  cta: fintechColors.primary,
+const cardFieldStyle = {
+  backgroundColor: "#FFFFFF",
+  textColor: "#0D1B2A",
+  placeholderColor: "#8FA5BD",
+  borderRadius: 0,
+  fontSize: 16,
 };
 
 export default function StripePaymentScreen() {
@@ -100,7 +60,6 @@ export default function StripePaymentScreen() {
   const [cardholderName, setCardholderName] = useState(
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "",
   );
-  const [saveCard, setSaveCard] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -108,82 +67,19 @@ export default function StripePaymentScreen() {
     () => (params.transferId || "").slice(0, 8).toUpperCase() || "PENDING",
     [params.transferId],
   );
-
-  const buildTransferConfirmationPayload = (paymentIntentId: string) => {
-    const recipientPayload = createTransferRecipientPayload({
-      ...transactionData.recipient,
-      receivingCountry: normalizeCountryCode(transactionData.receivingCountry || "SO"),
-      provider: transactionData.provider,
-      service: (transactionData.service || "MobileMoney") as TransferService,
-    });
-
-    const sendingCountry =
-      countryCodeMap[transactionData.sendCountry] ||
-      normalizeCountryCode(transactionData.sendCountry || "NO");
-    const receivingCountry =
-      countryCodeMap[transactionData.receivingCountry] ||
-      normalizeCountryCode(transactionData.receivingCountry || "SO");
-
-    return {
-      quoteId: transactionData.quoteId,
-      sendAmount: roundTo(transactionData.sendAmount, 2),
-      sendCurrency: transactionData.sendCurrency,
-      receiveAmount: roundTo(transactionData.receiveAmount, 2),
-      receiveCurrency: transactionData.receiveCurrency,
-      fee: roundTo(transactionData.fees, 2),
-      totalAmount: roundTo(transactionData.totalAmount, 2),
-      exchangeRate: roundTo(transactionData.exchangeRate, 6),
-      channel: "mobile",
-      deliveryMethod: deliveryMethodMap[transactionData.service] || "wallet",
-      sendingCountry,
-      receivingCountry,
-      destinationCountry: receivingCountry,
-      firstName: recipientPayload.firstName,
-      lastName: recipientPayload.lastName,
-      phoneNumber: recipientPayload.phoneNumber,
-      countryOfCitizenship: recipientPayload.countryOfCitizenship,
-      address: recipientPayload.address || "Unknown",
-      city: recipientPayload.city || "Unknown",
-      service: recipientPayload.service,
-      relationshipToSender: recipientPayload.relationshipToSender,
-      paymentMethod: "Card",
-      provider: normalizeProviderForApi(transactionData.provider, transactionData.service),
-      useBonus: transactionData.useBonus || false,
-      idempotencyKey: `${transactionData.quoteId}-${Date.now()}`,
-      PaymentIntentId: paymentIntentId,
-      TransferId: params.transferId || "",
-      PaymentStatus: "Succeeded",
-    };
-  };
-
-  const persistPendingConfirmation = async (
-    paymentIntentId: string,
-    confirmationPayload: Record<string, unknown>,
-  ) => {
-    const record = {
-      paymentIntentId,
-      transferId: params.transferId || "",
-      payload: confirmationPayload,
-      recipientName:
-        params.recipient ||
-        getRecipientName(transactionData.recipient.firstName, transactionData.recipient.lastName),
-      createdAt: new Date().toISOString(),
-    };
-
-    await AsyncStorage.setItem(
-      PENDING_TRANSFER_CONFIRMATION_KEY,
-      JSON.stringify(record),
-    );
-
-    return record;
-  };
+  const recipientName =
+    params.recipient ||
+    getRecipientName(transactionData.recipient.firstName, transactionData.recipient.lastName) ||
+    "Recipient";
+  const formattedTotal =
+    params.amount ||
+    `${Number(transactionData.totalAmount || 0).toFixed(2)} ${transactionData.sendCurrency || "NOK"}`;
 
   const handlePay = async () => {
     if (!params.clientSecret) {
       Alert.alert("Payment unavailable", "Client secret is missing.");
       return;
     }
-
     if (!cardComplete) {
       Alert.alert("Card details required", "Enter complete card details.");
       return;
@@ -201,302 +97,278 @@ export default function StripePaymentScreen() {
         },
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (error) throw new Error(error.message);
+
+      const paymentIntentStatus = String(paymentIntent?.status || "").toLowerCase();
+      if (!paymentIntent || paymentIntentStatus !== "succeeded") {
+        throw new Error(
+          `Card payment is not completed yet (status: ${paymentIntent?.status || "unknown"}).`,
+        );
       }
 
       const nextPaymentIntentId =
         paymentIntent?.id || params.paymentIntentId || params.clientSecret.split("_secret_")[0];
 
-      const confirmationPayload = buildTransferConfirmationPayload(nextPaymentIntentId);
-
-      try {
-        await TransactionService.confirmTransferAfterPayment(confirmationPayload);
-      } catch (confirmationError) {
-        await persistPendingConfirmation(nextPaymentIntentId, confirmationPayload);
-        router.replace("/transaction/MoneyTransferScreen");
-        Alert.alert(
-          "Confirmation pending",
-          "Payment succeeded, but transfer confirmation still needs to be completed. Use Retry Confirmation.",
-        );
-        return;
-      }
+      const senderName =
+        [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+        user?.email ||
+        "Account holder";
+      const resolvedRecipientName =
+        params.recipient ||
+        getRecipientName(transactionData.recipient.firstName, transactionData.recipient.lastName);
+      const createdAt = new Date().toISOString();
 
       router.replace({
-        pathname: "/transaction/ReceiptScreen",
+        pathname: "/transaction/PaymentStatusScreen",
         params: {
           transactionId: params.transferId || nextPaymentIntentId,
-          sender:
-            [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
-            user?.email ||
-            "Account holder",
-          recipient: params.recipient || getRecipientName(transactionData.recipient.firstName, transactionData.recipient.lastName),
-          createdAt: new Date().toISOString(),
-          status: "Success",
+          sender: senderName,
+          recipient: resolvedRecipientName,
+          createdAt,
+          status: "pending",
+          title: "Card Payment Successful",
+          message: "Card payment succeeded. Transfer is being finalized.",
+          orderNumber,
+          amount:
+            params.amount ||
+            `${transactionData.totalAmount.toFixed(2)} ${transactionData.sendCurrency}`,
+          paymentMethod: formatPaymentMethod(transactionData.paymentMethod),
+          receiptReady: "false",
         },
       });
     } catch (error) {
-      Alert.alert("Payment Failed", getErrorMessage(error));
+      router.replace({
+        pathname: "/transaction/PaymentStatusScreen",
+        params: {
+          status: "failure",
+          title: "Payment Failed",
+          message: getErrorMessage(error),
+          orderNumber,
+          amount:
+            params.amount ||
+            `${transactionData.totalAmount.toFixed(2)} ${transactionData.sendCurrency}`,
+          paymentMethod: formatPaymentMethod(transactionData.paymentMethod),
+          clientSecret: params.clientSecret || "",
+          paymentIntentId: params.paymentIntentId || "",
+          transferId: params.transferId || "",
+          recipient:
+            params.recipient ||
+            getRecipientName(
+              transactionData.recipient.firstName,
+              transactionData.recipient.lastName,
+            ),
+        },
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardScrollScreen contentStyle={styles.container}>
+    <FixedFooterScreen
+      contentStyle={styles.container}
+      footer={
+        loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={fintechColors.primary} />
+            <Text style={styles.loadingText}>Processing payment…</Text>
+          </View>
+        ) : (
+          <>
+            <FintechPrimaryButton
+              label={`Pay ${formattedTotal}`.trim()}
+              onPress={handlePay}
+              disabled={!cardComplete || !params.clientSecret}
+              style={styles.payButton}
+              textStyle={styles.payButtonText}
+            />
+            <View style={styles.hintRow}>
+              <Ionicons name="shield-checkmark-outline" size={12} color={fintechColors.textSubtle} />
+              <Text style={styles.hintText}>Encrypted by Stripe · Never stored</Text>
+            </View>
+          </>
+        )
+      }
+    >
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={20} color={fintechColors.text} />
+          <Ionicons name="chevron-back" size={20} color={fintechColors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payment</Text>
+        <View style={styles.headerCenter}>
+          <Ionicons name="lock-closed" size={12} color={fintechColors.primaryStrong} />
+          <Text style={styles.headerTitle}>Secure payment</Text>
+        </View>
         <View style={styles.headerSpacer} />
       </View>
 
-        <View style={styles.providerBar}>
-          <Text style={styles.providerLeft}>JubaPay</Text>
-          <View style={styles.providerRight}>
-            <Ionicons name="lock-closed" size={12} color={fintechColors.textMuted} />
-            <Text style={styles.providerRightText}>Secure payment for JubaPay</Text>
-          </View>
-        </View>
-
-      <View style={styles.summaryRow}>
-        <View>
-          <Text style={styles.amountText}>{params.amount || `${transactionData.totalAmount.toFixed(2)} ${transactionData.sendCurrency}`}</Text>
-          <Text style={styles.orderText}>Order Number : {orderNumber}</Text>
-        </View>
-        <TouchableOpacity style={styles.languageBadge} activeOpacity={0.8}>
-          <Text style={styles.languageText}>EN</Text>
-          <Ionicons name="chevron-down" size={14} color={fintechColors.textMuted} />
-        </TouchableOpacity>
+      {/* Amount block */}
+      <View style={styles.amountBlock}>
+        <Text style={styles.amountEyebrow}>Total to pay</Text>
+        <Text style={styles.amountValue}>{formattedTotal}</Text>
+        <Text style={styles.amountTo} numberOfLines={1}>
+          To {recipientName}
+        </Text>
       </View>
 
-      <View style={styles.cardShell}>
-        <View style={styles.cardFieldWrap}>
-          <Text style={styles.inputLabel}>Card details</Text>
+      {/* Unified card input */}
+      <View style={styles.inputCard}>
+        <Text style={styles.inputCardLabel}>Card details</Text>
+
+        <View style={styles.inputField}>
           <CardField
             postalCodeEnabled={false}
-            placeholders={{ number: "Card number" }}
+            placeholders={{ number: "•••• •••• •••• ••••" }}
             cardStyle={cardFieldStyle}
             style={styles.cardField}
             onCardChange={(details) => setCardComplete(Boolean(details.complete))}
           />
         </View>
 
-        <View style={styles.nameFieldWrap}>
-          <Text style={styles.inputLabel}>Name and surname on the card</Text>
-          <View style={styles.nameInputRow}>
-            <TextInput
-              value={cardholderName}
-              onChangeText={setCardholderName}
-              placeholder="Cardholder name"
-              placeholderTextColor={fintechColors.textSubtle}
-              style={styles.nameInput}
-              autoCapitalize="words"
-            />
-            <Ionicons name="checkmark" size={18} color={fintechColors.success} />
-          </View>
+        <View style={styles.inputDivider} />
+
+        <View style={styles.inputField}>
+          <TextInput
+            value={cardholderName}
+            onChangeText={setCardholderName}
+            placeholder="Name on card"
+            placeholderTextColor="#8FA5BD"
+            style={styles.nameInput}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
         </View>
       </View>
 
-      <View style={styles.saveRow}>
-        <Switch
-          value={saveCard}
-          onValueChange={setSaveCard}
-          trackColor={{ false: fintechColors.surfaceAlt, true: fintechColors.primarySoft }}
-          thumbColor={fintechColors.text}
-        />
-        <Text style={styles.saveLabel}>Save this card for future use</Text>
-      </View>
-
-      <View style={styles.footer}>
-        {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={fintechColors.primary} />
-              <Text style={styles.loadingText}>JubaPay is processing payment...</Text>
-            </View>
-          ) : (
-            <>
-              <FintechPrimaryButton
-                onPress={handlePay}
-                disabled={!cardComplete || !params.clientSecret}
-                style={!cardComplete ? styles.disabledButton : undefined}
-              >
-                <Text style={styles.payButtonText}>{`Pay ${params.amount || ""}`.trim()}</Text>
-              </FintechPrimaryButton>
-              <Text style={styles.brandText}>JubaPay</Text>
-            </>
-          )}
-        </View>
-    </KeyboardScrollScreen>
+      <Text style={styles.refText}>Reference: {orderNumber}</Text>
+    </FixedFooterScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: fintechSpacing.sm,
-    gap: fintechSpacing.lg,
+    flex: 1,
+    paddingTop: fintechSpacing.xs,
   },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: fintechSpacing.sm,
+    marginBottom: fintechSpacing.lg,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    backgroundColor: fintechColors.surface,
+  },
+  headerCenter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: "700",
-    color: paymentColors.heading,
+    color: fintechColors.text,
   },
-  headerSpacer: {
-    width: 36,
-  },
-  providerBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  headerSpacer: { width: 40 },
+
+  amountBlock: {
     alignItems: "center",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: paymentColors.border,
-    paddingVertical: fintechSpacing.sm,
-    gap: fintechSpacing.sm,
+    paddingBottom: fintechSpacing.xl,
+    gap: 4,
   },
-  providerLeft: {
+  amountEyebrow: {
     fontSize: 12,
-    color: paymentColors.subtext,
-  },
-  providerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fintechSpacing.xs,
-    flexShrink: 1,
-  },
-  providerRightText: {
-    fontSize: 12,
-    color: paymentColors.subtext,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: fintechSpacing.md,
-  },
-  amountText: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: paymentColors.heading,
-    marginBottom: fintechSpacing.xs,
-  },
-  orderText: {
-    fontSize: 14,
     fontWeight: "600",
-    color: paymentColors.subtext,
+    color: fintechColors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
-  languageBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fintechSpacing.xs,
-    borderWidth: 1,
-    borderColor: paymentColors.border,
-    borderRadius: fintechRadius.md,
-    paddingHorizontal: fintechSpacing.sm,
-    paddingVertical: fintechSpacing.xs,
-    backgroundColor: paymentColors.surface,
+  amountValue: {
+    fontSize: 40,
+    fontWeight: "800",
+    color: fintechColors.text,
+    letterSpacing: -0.5,
   },
-  languageText: {
+  amountTo: {
     fontSize: 14,
-    fontWeight: "700",
-    color: paymentColors.heading,
+    color: fintechColors.textMuted,
+    fontWeight: "500",
   },
-  cardShell: {
-    backgroundColor: paymentColors.surface,
+
+  inputCard: {
+    backgroundColor: fintechColors.surface,
     borderRadius: fintechRadius.lg,
-    borderWidth: 1,
-    borderColor: paymentColors.border,
-    padding: fintechSpacing.md,
-    gap: fintechSpacing.md,
-    shadowColor: fintechColors.shadow,
-    shadowOpacity: 0.2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: fintechColors.border,
+    overflow: "hidden",
+    shadowColor: "#10243E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
     shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    elevation: 2,
   },
-  cardFieldWrap: {
-    backgroundColor: paymentColors.surfaceAlt,
-    borderRadius: fintechRadius.md,
-    borderWidth: 1,
-    borderColor: paymentColors.border,
+  inputCardLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: fintechColors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
     paddingHorizontal: fintechSpacing.md,
     paddingTop: fintechSpacing.md,
     paddingBottom: fintechSpacing.xs,
   },
-  inputLabel: {
-    fontSize: 12,
-    color: paymentColors.subtext,
-    marginBottom: fintechSpacing.xs,
+  inputField: {
+    paddingHorizontal: fintechSpacing.md,
+    paddingVertical: fintechSpacing.xs,
+    backgroundColor: fintechColors.surface,
+    minHeight: 52,
+    justifyContent: "center",
   },
   cardField: {
     width: "100%",
-    height: 42,
+    height: 46,
   },
-  nameFieldWrap: {
-    backgroundColor: paymentColors.surfaceAlt,
-    borderRadius: fintechRadius.md,
-    borderWidth: 1,
-    borderColor: paymentColors.border,
-    paddingHorizontal: fintechSpacing.md,
-    paddingTop: fintechSpacing.md,
-    paddingBottom: fintechSpacing.sm,
-  },
-  nameInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fintechSpacing.sm,
+  inputDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: fintechColors.border,
+    marginHorizontal: fintechSpacing.md,
   },
   nameInput: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "700",
-    color: paymentColors.heading,
-    paddingVertical: 0,
+    fontSize: 15,
+    fontWeight: "500",
+    color: fintechColors.text,
+    paddingVertical: 6,
   },
-  saveRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fintechSpacing.sm,
+
+  refText: {
+    fontSize: 11,
+    color: fintechColors.textMuted,
+    textAlign: "center",
+    marginTop: fintechSpacing.xs,
   },
-  saveLabel: {
-    fontSize: 14,
-    color: paymentColors.subtext,
-  },
-  footer: {
-    paddingTop: fintechSpacing.md,
-    gap: fintechSpacing.sm,
-  },
-  disabledButton: {
-    backgroundColor: paymentColors.cta,
-    opacity: 0.7,
+
+  payButton: {
+    minHeight: 54,
+    borderRadius: 18,
   },
   payButtonText: {
-    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
   },
-  brandText: {
-    textAlign: "center",
-    fontSize: 14,
-    fontWeight: "700",
-    color: paymentColors.subtext,
+  hintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingTop: 2,
+  },
+  hintText: {
+    fontSize: 11,
+    color: fintechColors.textMuted,
   },
   loadingWrap: {
     alignItems: "center",
@@ -505,6 +377,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: paymentColors.subtext,
+    color: fintechColors.textMuted,
   },
 });

@@ -26,7 +26,7 @@ import AuthHelpers from "../../services/AuthHelpers";
 
 export default function Login() {
   const router = useRouter();
-  const { login, isLoading: authLoading } = useUser();
+  const { login, updateUserData, isLoading: authLoading } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -74,6 +74,7 @@ export default function Login() {
         signedInUser.stepUpVerificationRequired ||
         !signedInUser.isTrustedDevice
       ) {
+        updateUserData({ email: trimmedEmail, password });
         router.replace("/(auth)/enable-quick-login");
       } else {
         router.replace("/transaction/RecentTransactions");

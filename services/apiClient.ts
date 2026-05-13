@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import { Platform } from "react-native";
 
 const normalizeApiBaseUrl = (rawUrl?: string) => {
   const normalized = rawUrl?.trim().replace(/\/+$/, "");
@@ -11,11 +10,14 @@ const normalizeApiBaseUrl = (rawUrl?: string) => {
   }
 
   throw new Error(
-    "EXPO_PUBLIC_API_URL is required in production. Example: https://your-domain.com/api",
+    "EXPO_PUBLIC_API_URL is required. Set it in .env — update the ngrok URL each session.\n" +
+    "Example: EXPO_PUBLIC_API_URL=https://xxxx.ngrok-free.app/api\n" +
+    "Then restart with: npx expo start --clear",
   );
 };
 
-// EXPO_PUBLIC_API_URL should include the base path, e.g. http://localhost:5269/api
+// EXPO_PUBLIC_API_URL is baked into the bundle at build time by Metro.
+// After changing the .env value you MUST restart with: npx expo start --clear
 const API_BASE_URL = normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_URL);
 
 const apiClient = axios.create({
@@ -32,9 +34,7 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   async (config) => {
-    const token =
-      (await SecureStore.getItemAsync("authToken")) ||
-      (await AsyncStorage.getItem("token"));
+    const token = await SecureStore.getItemAsync("authToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -58,7 +58,6 @@ apiClient.interceptors.response.use(
 export const persistUserData = async (token: string, user: any) => {
   await Promise.all([
     SecureStore.setItemAsync("authToken", token),
-    AsyncStorage.setItem("token", token),
     AsyncStorage.setItem("user", JSON.stringify(user)),
   ]);
 };
@@ -66,7 +65,6 @@ export const persistUserData = async (token: string, user: any) => {
 export const clearUserData = async () => {
   await Promise.all([
     SecureStore.deleteItemAsync("authToken"),
-    AsyncStorage.removeItem("token"),
     AsyncStorage.removeItem("user"),
   ]);
 };
@@ -157,14 +155,16 @@ export const AuthService = {
         Password: password,
       });
 
-      const { Token, User } = response.data;
+      const data = response.data ?? {};
+      const Token = data.Token || data.token;
+      const User = data.User || data.user;
       if (!Token || !User) throw new Error("Invalid login response");
 
       await persistUserData(Token, {
-        ...response.data,
+        ...data,
         ...User,
       });
-      return response.data;
+      return data;
     } catch (error: any) {
       if (axios.isAxiosError(error) && !error.response) {
         throw new Error(`Cannot reach server at ${API_BASE_URL}/auth/login.`);
@@ -180,7 +180,9 @@ export const AuthService = {
         pin,
       });
 
-      const { Token, User } = response.data;
+      const data = response.data ?? {};
+      const Token = data.Token || data.token;
+      const User = data.User || data.user;
       if (!Token || !User) throw new Error("Invalid PIN login response");
 
       await persistUserData(Token, User);
@@ -281,7 +283,7 @@ export const LocationService = {
     try {
       const res = await axios.get("https://ipapi.co/json/");
       return res.data.country_name;
-    } catch (error) {
+    } catch {
       return null;
     }
   },
@@ -301,7 +303,7 @@ export const TransactionService = {
         receiveCurrency: toCurrency,
       });
       return res.data?.Data ?? res.data;
-    } catch (error) {
+    } catch {
       return {
         quoteId: "",
         sendAmount: 1000,
@@ -402,38 +404,83 @@ export const TransactionService = {
   },
 
   confirmTransferAfterPayment: async (payload: any) => {
-    const candidateEndpoints = [
-      "/test/confirm-transfer",
-      "/transfer/confirm",
-      "/transfer/confirm-payment",
-    ];
+    const idempotencyKey =
+      payload?.idempotencyKey ||
+      payload?.IdempotencyKey ||
+      `mobile-confirm-${Date.now()}`;
+    const requestPayload = {
+      ...payload,
+      idempotencyKey,
+    };
+    const requestHeaders = {
+      "Idempotency-Key": idempotencyKey,
+      "idempotency-key": idempotencyKey,
+      "X-Idempotency-Key": idempotencyKey,
+    };
+    const transactionId =
+      requestPayload?.transactionId ||
+      requestPayload?.TransactionId ||
+      requestPayload?.transferId ||
+      requestPayload?.TransferId ||
+      null;
 
-    let lastError: Error | null = null;
-
-    for (const endpoint of candidateEndpoints) {
-      try {
-        const res = await apiClient.post(endpoint, payload);
-        return res.data;
-      } catch (error: any) {
-        const status = error?.response?.status;
-
-        if (status === 404 || status === 405) {
-          lastError = error;
-          continue;
-        }
-
-        throw new Error(
-          error?.response?.data?.Message ||
-            error?.response?.data?.error ||
-            error?.message ||
-            "Transfer confirmation failed",
-        );
-      }
+    if (!transactionId) {
+      throw new Error("transactionId is required to check payment status");
     }
 
-    throw new Error(
-      lastError?.message || "No transfer confirmation endpoint is available",
-    );
+    const paymentStatusEndpoint = `/transfers/${transactionId}/payment`;
+    console.log("[confirmTransferAfterPayment] Checking payment status", {
+      endpoint: paymentStatusEndpoint,
+      transactionId,
+    });
+
+    try {
+      const paymentStatusRes = await apiClient.get(paymentStatusEndpoint, {
+        headers: requestHeaders,
+      });
+      const paymentStatusData =
+        paymentStatusRes?.data?.Data ?? paymentStatusRes?.data ?? {};
+      const transferStatus = String(
+        paymentStatusData?.status ?? paymentStatusData?.Status ?? "",
+      )
+        .trim()
+        .toLowerCase();
+      const workflowStage = String(
+        paymentStatusData?.workflowStage ?? paymentStatusData?.WorkflowStage ?? "",
+      )
+        .trim()
+        .toLowerCase();
+      const isPaid =
+        transferStatus === "paid" ||
+        workflowStage === "paid";
+
+      console.log("[confirmTransferAfterPayment] Payment status response", {
+        endpoint: paymentStatusEndpoint,
+        status: paymentStatusRes.status,
+        data: paymentStatusData,
+      });
+      if (!isPaid) {
+        throw new Error(
+          `Transfer is pending payment (status: ${paymentStatusData?.status ?? "unknown"}, workflowStage: ${paymentStatusData?.workflowStage ?? "unknown"}).`,
+        );
+      }
+
+      return paymentStatusData;
+    } catch (error: any) {
+      console.log("[confirmTransferAfterPayment] Payment status request failed", {
+        endpoint: paymentStatusEndpoint,
+        status: error?.response?.status,
+        responseData: error?.response?.data,
+        message: error?.message,
+      });
+      throw new Error(
+        error?.response?.data?.message ||
+          error?.response?.data?.Message ||
+          error?.response?.data?.error ||
+          error?.message ||
+          "Payment status check failed",
+      );
+    }
   },
 
   fetchAllTransaction_by_admin: async (filters = {}) => {
@@ -442,7 +489,7 @@ export const TransactionService = {
         params: filters,
       });
       return res.data?.Data ?? [];
-    } catch (error) {
+    } catch {
       return [];
     }
   },
@@ -451,7 +498,7 @@ export const TransactionService = {
     try {
       const res = await apiClient.get("/transfer/transactions/user");
       return res.data;
-    } catch (error) {
+    } catch {
       return [];
     }
   },
@@ -474,6 +521,11 @@ export const TransactionService = {
   transactionLimitTracker: async () => {
     const res = await apiClient.get("/test/transactionLimitTracker");
     return res.data;
+  },
+
+  getSendingLimits: async () => {
+    const res = await apiClient.get("/transfers/sending-limits");
+    return res.data?.Data ?? res.data?.data ?? res.data;
   },
 };
 

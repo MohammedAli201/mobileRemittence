@@ -1,12 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   Vibration,
@@ -14,8 +13,6 @@ import {
 } from "react-native";
 import { KeyboardScrollScreen } from "../../components/ui/layout";
 import {
-  FintechPinDots,
-  FintechScreenHeader,
   fintechColors,
   fintechSpacing,
 } from "../../components/ui/fintech";
@@ -23,29 +20,31 @@ import { useUser } from "../../context/UserContext";
 import { AuthHelpers } from "../../services/AuthHelpers";
 
 const MAX_ATTEMPTS = 5;
+const PIN_LENGTH = 4;
+const KEYPAD_ROWS = [
+  ["1", "2", "3"],
+  ["4", "5", "6"],
+  ["7", "8", "9"],
+  ["", "0", "backspace"],
+] as const;
+const AUTH_COPY = {
+  title: "Enter your code",
+  reset: "Forgot code?",
+};
 
 export default function PinEntryScreen() {
   const [pin, setPin] = useState<string[]>(["", "", "", ""]);
   const [isLoading, setIsLoading] = useState(true);
   const [attempts, setAttempts] = useState(0);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricLabel, setBiometricLabel] = useState("Biometrics");
-  const inputRef = useRef<TextInput>(null);
   const router = useRouter();
   const { user } = useUser();
   const { height } = useWindowDimensions();
-  const isCompact = height < 700;
+  const isCompact = height < 740;
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const [pinExists, bioAvailable, label] = await Promise.all([
-          AuthHelpers.pinExists(),
-          AuthHelpers.isBiometricAvailable(),
-          AuthHelpers.getBiometricLabel(),
-        ]);
-        setBiometricAvailable(bioAvailable);
-        setBiometricLabel(label);
+        const pinExists = await AuthHelpers.pinExists();
         if (!pinExists) {
           router.replace("/(auth)/login");
           return;
@@ -55,16 +54,14 @@ export default function PinEntryScreen() {
         setIsLoading(false);
       }
     };
-    checkAuth();
+    void checkAuth();
   }, [router]);
 
   const fullName = useMemo(() => {
     const first = user?.firstName || user?.FirstName || "";
     const last = user?.lastName || user?.LastName || "";
     const emailName = user?.email ? String(user.email).split("@")[0] : "";
-    return (
-      [first, last].filter(Boolean).join(" ") || emailName || "Account User"
-    );
+    return [first, last].filter(Boolean).join(" ") || emailName || "Account User";
   }, [user]);
 
   const phone = useMemo(
@@ -76,6 +73,7 @@ export default function PinEntryScreen() {
       "",
     [user],
   );
+
   const initials = useMemo(
     () =>
       fullName
@@ -87,6 +85,8 @@ export default function PinEntryScreen() {
         .toUpperCase() || "AU",
     [fullName],
   );
+
+  const maskedIdentity = phone || user?.email || "Secure device login";
 
   const resetPinState = () => setPin(["", "", "", ""]);
 
@@ -113,10 +113,10 @@ export default function PinEntryScreen() {
       }
       Alert.alert(
         "Incorrect PIN",
-        `${MAX_ATTEMPTS - nextAttempts} attempts remaining.`,
+        `${MAX_ATTEMPTS - nextAttempts} app PIN attempts remaining.`,
       );
     } catch {
-      Alert.alert("Error", "Failed to verify PIN. Please try again.");
+      Alert.alert("Error", "Failed to verify your app PIN. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -124,124 +124,135 @@ export default function PinEntryScreen() {
 
   const handlePinInput = (value: string) => {
     if (isLoading) return;
-    const cleaned = value.replace(/\D/g, "").slice(0, 4);
-    const padded = cleaned.padEnd(4, "");
-    const next = padded.split("");
+    const cleaned = value.replace(/\D/g, "").slice(0, PIN_LENGTH);
+    const next = Array.from({ length: PIN_LENGTH }, (_, index) => cleaned[index] || "");
     setPin(next);
-    if (cleaned.length === 4) {
-      handleSubmit(cleaned);
+    if (cleaned.length === PIN_LENGTH) {
+      void handleSubmit(cleaned);
     }
   };
 
-  const handleBiometricAuth = async () => {
-    setIsLoading(true);
-    const success = await AuthHelpers.authenticateWithBiometrics();
-    setIsLoading(false);
-    if (success) {
-      router.replace("/transaction/RecentTransactions");
-      return;
-    }
-    Alert.alert(
-      "Authentication failed",
-      `We could not unlock with ${biometricLabel}.`,
-    );
+  const appendDigit = (digit: string) => {
+    if (isLoading) return;
+    const current = pin.join("");
+    if (current.length >= PIN_LENGTH) return;
+    handlePinInput(`${current}${digit}`);
   };
 
-  useEffect(() => {
-    if (!isLoading) {
-      inputRef.current?.focus();
-    }
-  }, [isLoading]);
+  const removeDigit = () => {
+    if (isLoading) return;
+    const current = pin.join("");
+    handlePinInput(current.slice(0, -1));
+  };
 
   if (isLoading && !pin.some(Boolean)) {
     return (
       <KeyboardScrollScreen contentStyle={styles.loadingScreen}>
-        <ActivityIndicator size="large" color={fintechColors.primary} />
+        <View style={styles.loadingOrb}>
+          <ActivityIndicator size="small" color={fintechColors.surface} />
+        </View>
         <Text style={styles.loadingBrand}>JubaPay</Text>
+        <Text style={styles.loadingText}>Preparing secure sign-in</Text>
       </KeyboardScrollScreen>
     );
   }
 
   return (
     <KeyboardScrollScreen contentStyle={styles.container}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.replace("/(auth)/login")}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="chevron-back" size={18} color={fintechColors.text} />
-        </TouchableOpacity>
+      <View style={styles.chromeRow} />
 
-        <View style={[styles.content, isCompact && styles.contentCompact]}>
-          <View style={styles.topSection}>
-            <FintechScreenHeader
-              eyebrow="Welcome back"
-              title="Enter your PIN"
-              subtitle="Use your PIN to continue."
-              titleStyle={[styles.headerTitle, isCompact && styles.headerTitleCompact]}
-              subtitleStyle={[styles.headerSubtitle, isCompact && styles.headerSubtitleCompact]}
-            />
-
-            <View style={[styles.identityRow, isCompact && styles.identityRowCompact]}>
-              <View style={[styles.avatar, isCompact && styles.avatarCompact]}>
-                <Text style={[styles.avatarText, isCompact && styles.avatarTextCompact]}>{initials}</Text>
-              </View>
-              <View style={styles.identityText}>
-                <Text style={[styles.nameText, isCompact && styles.nameTextCompact]} numberOfLines={1}>
-                  {fullName}
-                </Text>
-                {phone ? <Text style={styles.phoneText}>{phone}</Text> : null}
-              </View>
+      <View style={[styles.content, isCompact && styles.contentCompact]}>
+        <View style={styles.topCluster}>
+          <TouchableOpacity
+            style={[styles.identityCard, isCompact && styles.identityCardKeyboard]}
+            activeOpacity={0.92}
+            onPress={() => {}}
+          >
+            <View style={styles.identityAvatar}>
+              <Text style={styles.identityAvatarText}>{initials}</Text>
             </View>
+            <View style={styles.identityCopy}>
+              <Text style={styles.identityName} numberOfLines={1}>
+                {fullName}
+              </Text>
+              <Text style={styles.identityMeta} numberOfLines={1}>
+                {maskedIdentity}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.pinArea, isCompact && styles.pinAreaCompact]}
-              activeOpacity={0.9}
-              onPress={() => inputRef.current?.focus()}
-            >
-              <Text style={styles.pinTitle}>PIN</Text>
-              <FintechPinDots value={pin} style={styles.pinRow} />
-              <View style={styles.linkRow}>
-                <TouchableOpacity
-                  onPress={() => router.push("/(auth)/ResetPinScreen")}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.forgotText}>Recover PIN</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => router.replace("/(auth)/login")}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.altText}>Use another account</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
+          <View style={[styles.pinPanel, isCompact && styles.pinPanelKeyboard]}>
+            <Text style={[styles.title, styles.codeTitle, isCompact && styles.titleCompact]}>
+              {AUTH_COPY.title}
+            </Text>
+            <View style={styles.pinGrid}>
+              {pin.map((digit, index) => {
+                const isFilled = Boolean(digit);
+                const isActive = !isFilled && index === Math.min(pin.filter(Boolean).length, PIN_LENGTH - 1);
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.pinBox,
+                      isCompact && styles.pinBoxCompact,
+                      isFilled && styles.pinBoxFilled,
+                      isActive && styles.pinBoxActive,
+                    ]}
+                  >
+                    {isFilled ? <View style={styles.pinDot} /> : null}
+                  </View>
+                );
+              })}
+            </View>
           </View>
 
-          {biometricAvailable ? (
+          <View style={[styles.helperRow, isCompact && styles.helperRowKeyboard]}>
             <TouchableOpacity
-              style={styles.bioGhost}
-              onPress={handleBiometricAuth}
-              activeOpacity={0.88}
+              style={styles.helperAction}
+              onPress={() => router.push("/(auth)/ResetPinScreen")}
+              activeOpacity={0.82}
             >
-              <Ionicons
-                name="finger-print-outline"
-                size={18}
-                color={fintechColors.primary}
-              />
-              <Text style={styles.bioGhostText}>Use {biometricLabel}</Text>
+              <Text style={styles.helperActionText}>{AUTH_COPY.reset}</Text>
             </TouchableOpacity>
-          ) : null}
+          </View>
         </View>
-        <TextInput
-          ref={inputRef}
-          value={pin.join("")}
-          onChangeText={handlePinInput}
-          keyboardType="number-pad"
-          textContentType="oneTimeCode"
-          autoFocus
-          style={styles.hiddenInput}
-        />
+
+        <View style={styles.keypad}>
+          {KEYPAD_ROWS.map((row, rowIndex) => (
+            <View key={`row-${rowIndex}`} style={styles.keypadRow}>
+              {row.map((key, keyIndex) => {
+                if (!key) {
+                  return <View key={`empty-${rowIndex}-${keyIndex}`} style={styles.keypadSpacer} />;
+                }
+
+                if (key === "backspace") {
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={styles.keypadKey}
+                      onPress={removeDigit}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="backspace-outline" size={22} color={fintechColors.textMuted} />
+                    </TouchableOpacity>
+                  );
+                }
+
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={styles.keypadKey}
+                    onPress={() => appendDigit(key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.keypadKeyText}>{key}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+        </View>
+      </View>
     </KeyboardScrollScreen>
   );
 }
@@ -251,113 +262,199 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingOrb: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fintechColors.primaryStrong,
+    shadowColor: fintechColors.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 4,
+  },
   loadingBrand: {
-    marginTop: fintechSpacing.sm,
-    fontSize: 18,
+    marginTop: 14,
+    fontSize: 20,
     fontWeight: "800",
-    color: fintechColors.primary,
+    color: fintechColors.primaryStrong,
     letterSpacing: 0.2,
+  },
+  loadingText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: fintechColors.textMuted,
   },
   container: {
     flexGrow: 1,
-    paddingTop: fintechSpacing.sm,
-    paddingBottom: fintechSpacing.lg,
+    paddingTop: fintechSpacing.xs,
+    paddingBottom: fintechSpacing.md,
+    justifyContent: "space-between",
+    backgroundColor: fintechColors.surface,
+  },
+  chromeRow: {
+    minHeight: 12,
   },
   content: {
     flex: 1,
     justifyContent: "space-between",
-    paddingBottom: fintechSpacing.sm,
   },
   contentCompact: {
-    paddingBottom: fintechSpacing.xs,
+    paddingBottom: 8,
   },
-  topSection: {
-    gap: fintechSpacing.md,
-  },
-  identityRowCompact: {
-    padding: fintechSpacing.sm,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
+  topCluster: {
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: fintechColors.surface,
+    gap: 18,
+    paddingTop: 42,
   },
-  identityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fintechSpacing.md,
-    padding: fintechSpacing.sm,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    backgroundColor: fintechColors.surface,
+  title: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "800",
+    color: fintechColors.text,
+    textAlign: "center",
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: fintechColors.primarySoft,
-    alignItems: "center",
-    justifyContent: "center",
+  codeTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "500",
+    color: fintechColors.textSubtle,
   },
-  avatarCompact: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  avatarText: { fontSize: 16, fontWeight: "800", color: fintechColors.primary },
-  avatarTextCompact: {
+  titleCompact: {
     fontSize: 14,
+    lineHeight: 18,
   },
-  identityText: { flex: 1, gap: fintechSpacing.xxs },
-  nameText: { fontSize: 14, fontWeight: "700", color: fintechColors.text },
-  nameTextCompact: {
-    fontSize: 13,
+  identityCard: {
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: fintechSpacing.sm,
+    paddingVertical: 0,
+    backgroundColor: "transparent",
   },
-  phoneText: { fontSize: 11, color: fintechColors.textMuted },
-  pinArea: { alignItems: "center", gap: fintechSpacing.sm },
-  pinAreaCompact: {
+  identityCardKeyboard: {
+    paddingVertical: 0,
+  },
+  identityAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#FFF1E7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  identityAvatarText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#D97706",
+  },
+  identityCopy: {
+    alignItems: "center",
+    gap: 3,
+  },
+  identityName: {
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: "500",
+    color: fintechColors.text,
+    textAlign: "center",
+  },
+  identityMeta: {
+    fontSize: 14,
+    lineHeight: 16,
+    color: fintechColors.textMuted,
+    textAlign: "center",
+  },
+  pinPanel: {
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: fintechSpacing.sm,
+    paddingVertical: fintechSpacing.xs,
+    backgroundColor: "transparent",
+  },
+  pinPanelKeyboard: {
+    paddingVertical: 0,
     gap: fintechSpacing.xs,
   },
-  pinTitle: { fontSize: 12, fontWeight: "700", color: fintechColors.textMuted, letterSpacing: 0.6 },
-  pinRow: { justifyContent: "center" },
-  linkRow: { flexDirection: "row", gap: fintechSpacing.lg },
-  forgotText: { fontSize: 13, color: fintechColors.primary, fontWeight: "700" },
-  altText: { fontSize: 13, color: fintechColors.textMuted, fontWeight: "600" },
-  headerTitle: { fontSize: 20, lineHeight: 24 },
-  headerTitleCompact: { fontSize: 18, lineHeight: 22 },
-  headerSubtitle: { fontSize: 13, lineHeight: 18, color: fintechColors.textMuted },
-  headerSubtitleCompact: { fontSize: 12, lineHeight: 16 },
-  keypad: { gap: fintechSpacing.sm, paddingBottom: fintechSpacing.xs },
-  keypadCompact: {
-    gap: fintechSpacing.sm,
+  pinGrid: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
-  bioGhost: {
-    alignSelf: "center",
+  pinBox: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: fintechColors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinBoxCompact: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  pinBoxActive: {
+    backgroundColor: fintechColors.primarySoft,
+    borderWidth: 2,
+    borderColor: "#6D4CFF",
+  },
+  pinBoxFilled: {
+    backgroundColor: "#6D4CFF",
+  },
+  pinDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FFFFFF",
+  },
+  helperRow: {
+    justifyContent: "center",
+    marginTop: -2,
+  },
+  helperRowKeyboard: {
+    marginTop: -6,
+  },
+  helperAction: {
+    minHeight: 24,
+    backgroundColor: "transparent",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
     flexDirection: "row",
     alignItems: "center",
-    gap: fintechSpacing.sm,
-    paddingHorizontal: fintechSpacing.md,
-    paddingVertical: fintechSpacing.sm,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    backgroundColor: fintechColors.surface,
   },
-  bioGhostText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: fintechColors.primary,
+  helperActionText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#6D4CFF",
   },
-  hiddenInput: {
-    position: "absolute",
-    opacity: 0,
-    height: 0,
-    width: 0,
+  keypad: {
+    marginTop: -22,
+    marginBottom: 34,
+    paddingBottom: 6,
+    gap: 16,
+    alignItems: "stretch",
+  },
+  keypadRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: 22,
+  },
+  keypadKey: {
+    width: 74,
+    height: 54,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  keypadSpacer: {
+    width: 74,
+    height: 54,
+  },
+  keypadKeyText: {
+    fontSize: 30,
+    lineHeight: 34,
+    fontWeight: "500",
+    color: fintechColors.text,
   },
 });

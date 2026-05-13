@@ -7,6 +7,7 @@ const flagMap: Record<string, any> = {
   et: require('../assets/flags/et.png'),
   dj: require('../assets/flags/dj.png'),
   us: require('../assets/flags/us.png'), // fallback/default
+  xx: require('../assets/flags/xx.png'),
 };
 
 export default flagMap;

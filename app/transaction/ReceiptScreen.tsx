@@ -10,10 +10,9 @@ import {
   FintechSecondaryButton,
   FintechStatusPill,
   FintechSummaryTile,
-  fintechColors,
   fintechSpacing,
 } from '../../components/ui/fintech';
-import { ScrollScreen } from '../../components/ui/layout';
+import { ScrollScreen, useResponsiveMetrics } from '../../components/ui/layout';
 import { getTransferDraft } from '../../services/transferDraft';
 
 const getParamValue = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
@@ -36,6 +35,7 @@ export default function ReceiptScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const transactionData = getTransferDraft();
+  const { isSmallPhone } = useResponsiveMetrics();
 
   const transactionId = getParamValue(params.transactionId) || `TX-${Date.now()}`;
   const sender = getParamValue(params.sender) || 'Account holder';
@@ -89,7 +89,7 @@ export default function ReceiptScreen() {
       />
 
         <FintechReceiptCard title="Transfer complete">
-          <View style={styles.summaryRow}>
+          <View style={[styles.summaryRow, isSmallPhone && styles.summaryRowStack]}>
             <FintechSummaryTile label="Total paid" value={receiptData.total} />
             <FintechSummaryTile label="Recipient gets" value={receiptData.recipientGets} emphasis />
           </View>
@@ -122,6 +122,9 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     gap: fintechSpacing.sm,
+  },
+  summaryRowStack: {
+    flexDirection: 'column',
   },
   footer: {
     gap: fintechSpacing.sm,

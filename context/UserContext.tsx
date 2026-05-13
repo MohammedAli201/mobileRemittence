@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { AuthService } from '../services/apiClient';
+import { AuthHelpers } from '../services/AuthHelpers';
 
 type User = {
   id: string;
@@ -165,11 +166,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setUser(nextUser);
-      setUserRegistrationData((prev) => ({
-        ...prev,
-        email,
-        password,
-      }));
       await SecureStore.setItemAsync('authToken', authToken);
 
       return nextUser;
@@ -188,8 +184,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AuthService.logout();
       setUser(null);
-      await SecureStore.deleteItemAsync('authToken');
-      await SecureStore.deleteItemAsync('pin');
+      await Promise.all([
+        SecureStore.deleteItemAsync('authToken'),
+        AuthHelpers.clearPin(),
+      ]);
     } catch (error) {
       console.error('Logout failed:', error);
       throw error;

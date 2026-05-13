@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,12 +11,12 @@ import {
 import {
   FintechEmptyState,
   FintechScreenHeader,
-  FintechSectionCard,
   FintechStatusPill,
   fintechColors,
   fintechSpacing,
 } from '../../components/ui/fintech';
 import { ScrollScreen } from '../../components/ui/layout';
+import flagMap from '../flagMap';
 import { TransactionService } from '../../services/apiClient';
 
 type ApiTransaction = {
@@ -30,10 +31,27 @@ type ApiTransaction = {
 };
 
 const getStatusTone = (status: string) => {
-  const normalized = status?.toLowerCase();
-  if (normalized.includes('paid') || normalized.includes('complete')) return 'success';
-  if (normalized.includes('fail') || normalized.includes('cancel')) return 'danger';
+  const s = status?.toLowerCase();
+  if (s.includes('paid') || s.includes('complete')) return 'success';
+  if (s.includes('fail') || s.includes('cancel')) return 'danger';
   return 'warning';
+};
+
+const countryCodeLookup: Record<string, string> = {
+  norway: 'no', no: 'no', nok: 'no',
+  somalia: 'so', so: 'so', sos: 'so',
+  kenya: 'ke', ke: 'ke', kes: 'ke',
+  uganda: 'ug', ug: 'ug', ugx: 'ug',
+  tanzania: 'tz', tz: 'tz', tzs: 'tz',
+  ethiopia: 'et', et: 'et', etb: 'et',
+  djibouti: 'dj', dj: 'dj',
+  usd: 'us', us: 'us',
+};
+
+const getFlagAsset = (country: string) => {
+  const key = (country?.trim().toLowerCase() ?? '');
+  const code = countryCodeLookup[key] || key.slice(0, 2);
+  return flagMap[code] || flagMap.xx || flagMap.us;
 };
 
 export default function TransactionList() {
@@ -47,10 +65,8 @@ export default function TransactionList() {
       try {
         setLoading(true);
         setError(null);
-
         const response = await TransactionService.fetchAllTransaction();
         const data = response?.Data || [];
-
         const mapped: ApiTransaction[] = data.map((item: any) => {
           const created = item?.CreatedAt ? new Date(item.CreatedAt) : new Date();
           return {
@@ -64,60 +80,72 @@ export default function TransactionList() {
             createdAtMs: created.getTime(),
           };
         });
-
         mapped.sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0));
         setTransfers(mapped);
-      } catch (e) {
+      } catch {
         setError('Failed to load transactions. Please try again.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchTransactions();
   }, []);
 
   return (
     <ScrollScreen contentStyle={styles.content}>
-      <View style={styles.header}>
-        <FintechScreenHeader
-          eyebrow="History"
-          title="All transfers"
-          subtitle="A compact view of recent remittance activity and statuses."
-        />
-      </View>
+      <FintechScreenHeader
+        eyebrow="History"
+        title="All transfers"
+        subtitle="Your recent remittance activity."
+      />
 
-        <View style={styles.listArea}>
-          {loading ? (
-            <View style={styles.loadingState}>
-              <ActivityIndicator color={fintechColors.primary} />
-            </View>
-          ) : transfers.length ? (
-            transfers.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.transferCard} activeOpacity={0.9} onPress={() => router.back()}>
-                <View style={styles.transferTop}>
-                  <View style={styles.transferCopy}>
-                    <Text style={styles.transferName}>{item.name}</Text>
-                    <Text style={styles.transferMeta}>{item.date} - {item.method}</Text>
-                  </View>
-                  <FintechStatusPill label={item.status} tone={getStatusTone(item.status)} />
-                </View>
-                <View style={styles.transferBottom}>
-                  <Text style={styles.transferCountry}>{item.country || 'Destination not set'}</Text>
-                  <Text style={styles.transferAmount}>{item.amount}</Text>
-                </View>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <FintechSectionCard>
-              <FintechEmptyState
-                icon={error ? 'alert-circle-outline' : 'swap-horizontal-outline'}
-                title={error ? 'Could not load transfers' : 'No transfers yet'}
-                text={error || 'Transfers will appear here once you send money.'}
-              />
-            </FintechSectionCard>
-          )}
-      </View>
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={fintechColors.primary} />
+        </View>
+      ) : transfers.length ? (
+        <View>
+          {transfers.map((item, index) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.row, index > 0 && styles.rowDivider]}
+              activeOpacity={0.7}
+              onPress={() =>
+                router.push({
+                  pathname: '/transaction/TransactionDetailScreen',
+                  params: {
+                    transactionId: item.id,
+                    recipient: item.name,
+                    country: item.country || 'Destination not set',
+                    date: item.date,
+                    amount: item.amount,
+                    status: item.status,
+                    method: item.method,
+                  },
+                })
+              }
+            >
+              <View style={styles.flagWrap}>
+                <Image source={getFlagAsset(item.country)} style={styles.flag} />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowName}>{item.name}</Text>
+                <Text style={styles.rowMeta}>{item.date} · {item.method}</Text>
+              </View>
+              <View style={styles.rowRight}>
+                <Text style={styles.rowAmount}>{item.amount}</Text>
+                <FintechStatusPill label={item.status} tone={getStatusTone(item.status)} />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <FintechEmptyState
+          icon={error ? 'alert-circle-outline' : 'swap-horizontal-outline'}
+          title={error ? 'Could not load transfers' : 'No transfers yet'}
+          text={error || 'Transfers will appear here once you send money.'}
+        />
+      )}
     </ScrollScreen>
   );
 }
@@ -125,58 +153,55 @@ export default function TransactionList() {
 const styles = StyleSheet.create({
   content: {
     paddingTop: fintechSpacing.sm,
-    gap: fintechSpacing.md,
+    gap: fintechSpacing.lg,
   },
-  header: {
-    marginBottom: fintechSpacing.xs,
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: fintechSpacing.xl,
   },
-  listArea: {
-    gap: fintechSpacing.md,
-    flex: 1,
-  },
-  transferCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: fintechColors.border,
-    backgroundColor: fintechColors.surface,
-    padding: fintechSpacing.md,
-    gap: fintechSpacing.md,
-  },
-  transferTop: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: fintechSpacing.md,
+    paddingVertical: fintechSpacing.md,
   },
-  transferCopy: {
+  rowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: fintechColors.border,
+  },
+  flagWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: fintechColors.surfaceStrong,
+  },
+  flag: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  rowBody: {
     flex: 1,
-    gap: fintechSpacing.xs,
+    gap: 3,
   },
-  transferName: {
+  rowName: {
     fontSize: 15,
     fontWeight: '700',
     color: fintechColors.text,
   },
-  transferMeta: {
-    fontSize: 13,
+  rowMeta: {
+    fontSize: 12,
     color: fintechColors.textMuted,
   },
-  transferBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: fintechSpacing.md,
+  rowRight: {
+    alignItems: 'flex-end',
+    gap: 4,
   },
-  transferCountry: {
-    fontSize: 13,
-    color: fintechColors.textMuted,
-  },
-  transferAmount: {
+  rowAmount: {
     fontSize: 14,
     fontWeight: '700',
     color: fintechColors.text,
-  },
-  loadingState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: fintechSpacing.xl,
   },
 });

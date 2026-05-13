@@ -95,7 +95,7 @@ export default function AddRecipientScreen() {
         recipient: { ...recipientProfile, avatarColor: "#2B6CB0" },
       });
       router.replace({
-        pathname: "/transaction/AgreeAndPayScreen",
+        pathname: "/transaction/PaymentMethodScreen",
         params: {
           recipient: JSON.stringify({
             id: `${Date.now()}`,
